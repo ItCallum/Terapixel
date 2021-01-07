@@ -1,0 +1,275 @@
+---
+title: "clean_data"
+author: "Callum Simpson"
+date: "30/12/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Clean data
+This is my first look over the data to try and discover any issues that will need to take care of 
+
+### checkpoints_df
+A file that contains application checkpoint events throughout the execution of the render job.
+
+We have 660,400 instances with no row missing any values
+```{r cars}
+checkpoints_df
+
+checkpoints_df
+
+sum(is.na(checkpoints_df))
+```
+
+### hostname
+
+We have 1024 unique host names with the range of occurrence in the dataset being between 580 to 1240. However looking at the boxplot the majority sits between 600 and 700.
+
+We have 4 hosts that have referenced over 1000 times in this database.
+
+0d56a730076643d585f77e00d2d8521a000000	1240			
+0d56a730076643d585f77e00d2d8521a00000P	1240			
+b9a1fa7ae2f74eb68f25f607980f97d7000009	1240			
+b9a1fa7ae2f74eb68f25f607980f97d700000Y	1220	
+
+```{r cars}
+unique_Host <- count(checkpoints_df, checkpoints_df$hostname)
+unique_Host
+
+range((unique_Host)$n)
+
+ggplot(unique_Host, aes(y=n)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
+
+unique_Host %>% filter(n > 1000)
+
+```
+### eventType
+
+Looking at eventType we see that both have the same number of occurrences. This is what we would expect as every job that starts must end.
+
+```{r gpu_df}
+count(checkpoints_df, checkpoints_df$eventType)
+```
+
+### eventName
+
+Looking at eventName we see that both have the same number of occurrences. This suggests that every loop will have each event happing once each time.
+
+```{r gpu_df}
+count(checkpoints_df, checkpoints_df$eventName)
+```
+
+### Date time
+
+timestamp is a character so i changed it to a POSIXct time stamp then created two new columns date and time which is the time stamp split up.
+
+Looking at it, it seems all this data occurred over 50ish minuets (07:41:30.957 to 08:30:16.345)
+
+```{r Date_Time}
+checkpoints_df 
+
+min(checkpoints_df$timestamp) 
+
+max(checkpoints_df$timestamp) 
+```
+### jobId
+
+Looking at jobId we see that we have 3 job IDs, majority of them (99%) where done at level 12. Only 10 (0.0015%) where done at level 4.
+
+```{r jobId}
+count(checkpoints_df, checkpoints_df$jobId) %>% mutate(percent = n / sum(n) * 100)
+```
+
+### taskId
+
+Each task is 4096 * 4096 pixels which are then split and subsampled as required into tiles. 
+
+```{r taskId}
+count(checkpoints_df, checkpoints_df$taskId) %>% mutate(percent = n / sum(n) * 100)
+
+checkpoints_df %>% count( taskId)
+```
+
+## gpu_df
+
+We have 1 million results regarding the virtual machine GPUS. Looking at it we dont have any rows missing any data. 
+
+
+```{r gpu_df}
+gpu_df
+
+sum(is.na(checkpoints_df))
+```
+
+### Time stamp
+
+The char timestamp was turned into a real timestamp and split into a separate date and time.
+
+These recording are for about 50 minuets (07:41:25.772 to 08:31:53.573)
+
+```{r Date_Time}
+
+gpu_df
+
+min(gpu_df$timestamp) 
+
+max(gpu_df$timestamp) 
+```
+
+### gpuSerial
+
+We have 1024 unique gpuSerial ids, by the looks of it there is no instance where an gpu is shared by by multipale virtual machines 
+
+This tells us that each Virtual machine is paired to one physical GPU card.
+
+
+```{r cars}
+unique_Host <- count(gpu_df, gpu_df$gpuSerial)
+unique_Host
+
+range((unique_Host)$n)
+
+summary((unique_Host)$n)
+
+unique_Host %>% filter(n > 2000)
+
+
+unique_serial_id <- gpu_df %>% group_by(gpuSerial) %>% count(hostname)
+
+count(unique_serial_id) %>% filter(n > 1)
+```
+
+### hostname
+
+
+```{r cars}
+unique_Host <- count(gpu_df, gpu_df$hostname)
+unique_Host
+
+range((unique_Host)$n)
+
+unique_Host %>% filter(n > 2000)
+
+
+
+
+```
+
+### powerDrawWatt
+
+The Power draw of the GPU in watts. We see that there is quite the difference in 1st and 3rd quater(80 watts). Looking at the median is 96 
+
+```{r powerDrawWatt}
+
+summary(gpu_df$powerDrawWatt)
+
+ggplot(gpu_df, aes(y=powerDrawWatt)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+ ggtitle("powerDrawWatt") 
+
+
+```
+
+### gpuUtilPerc
+
+Percent utilization of the GPU Core(s).
+
+We see that 25% of the time no core where used.
+
+However we can see that the median is is 89 telling us that that over 50% of the time the Percent utilization of Cpu is over 89%.
+
+```{r gpuUtilPerc}
+
+summary(gpu_df$gpuUtilPerc)
+
+ggplot(gpu_df, aes(y=gpuUtilPerc)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+ ggtitle("gpuUtilPerc") 
+
+
+```
+### gpuTempC
+
+The Temperature of the GPU in Celsius
+
+Looking at the boxplot we see that the distribution of temperature seems almost normally distributed.
+
+It seems that both mean and median is around the same - 40 degrees Celsius.
+
+its seems the iqr range is 4. So 1st qu is 2 degrees less than the medium and 3rd Qu is 2 degrees above the median.
+```{r gpuTempC}
+
+summary(gpu_df$gpuTempC)
+
+ggplot(gpu_df, aes(y=gpuTempC)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+ ggtitle("gpuTempC") 
+
+
+```
+### gpuMemUtilPerc
+
+gpuMemUtilPerc is the Percent utilisation of the GPU memory.
+
+We see that the for 25% of the time no cores are being used. With 75% of the utilization of the memory  was at 50% 
+
+```{r gpuMemUtilPerc}
+
+summary(gpu_df$gpuMemUtilPerc)
+
+ggplot(gpu_df, aes(y=gpuMemUtilPerc)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+ ggtitle("gpuMemUtilPerc") 
+
+
+```
+
+## xy_df
+This file contains the x,y co-ordinates of which part the image was being rendered for each task.
+
+we have 65,793 sets of coordinates 
+
+```{r xy_df}
+xy_df
+```
+
+### jobId
+
+Looking at jobId we see that we have 3 job IDs, majority of them (99%) where done at level 12. Only 10 (0.0015%) where done at level 4.
+
+This and the task id could probably be used to combined this and the application-checkpoints together.
+
+```{r jobId}
+count(xy_df, xy_df$jobId) %>% mutate(percent = n / sum(n) * 100)
+
+xy_df %>% filter(level == 4)
+xy_df %>% filter(level == 8)
+
+```
+
+
+### level
+
+We have 3 different levels 4,8 and 12 (which relate to zoom ability) 
+
+```{r level}
+count(xy_df, xy_df$level) %>% mutate(percent = n / sum(n) * 100)
+```
+
+### X and Y 
+
+All cords seem to be filled in for levels 8 and 12. This also can be used to understand the amount of task that where needed to visualize each level
+
+```{r level}
+df_heat_map 
+
+ggplot(df_heat_map, aes(x, y, fill= V1)) + 
+  geom_tile()+ 
+  facet_wrap(~ level,scales = "free")
+
+```
