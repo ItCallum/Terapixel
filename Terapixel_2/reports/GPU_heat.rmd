@@ -1,0 +1,55 @@
+---
+title: "GPU_heat"
+author: "Callum Simpson"
+date: "30/12/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(digits=2)
+```
+
+```{r include=FALSE}
+# Load project
+source("src/GPU_heat_code.R")
+```
+
+This report will be looking into how certian factors effect the GPU heat.
+
+High temperature will have two negative effects on a GPU.
+
+- A high temperatures will shorten the life of hardware. Partically damaged GPU may increase the GPU processing time due , slowing down the processes. Fully damaged GPU would need to be replaced adding in a additional cost to the processes. There is also the potential that too hot of a temperature could cause more damage to the host than just damaging the GPU, taking down the whole machine.
+- GPU typically have a fail safe that will try and combat high temperature by ether slowing down in order to cool down or fully shut down. Both would increase the time needed to run a programme.
+
+So we need to investigate what effect using cloud computers to make Terapixel has an effect on a GPU and if they are being pushed to the point at which they may be damaged.
+
+## Memory utlisation and tempreture 
+
+Before I looked into how temperature was effected by performance I went about looking into whether an increase in memory utilization had an effect on GPU temperature.
+
+We see that there is as Memory utilization increases it changes the temperature in some weird ways. 
+
+At low utilization zero (so not running) temprature as its lowest of 37. we then see as utlisation slightly increases we see a a jump to around 40 degrees. We then notice 3 trends
+- betweeb 5% and 35% the temparture stays at around 40 degrees. 
+- There is then a sudden jump to around 41 degrees up until 60 percent
+- Between memory utlisation 60% to 80% we see that temprature slowly starts to decrease to around 38 degrees. 
+
+```{r heat_util_gpuMemUtilPerc}
+ggplot(heat_util_gpuMemUtilPerc, aes(gpuMemUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+```
+
+## GPU utlisation and tempreture 
+
+I also wanted to see how GPU utilization effected temperature.
+
+We see that there is a slow increase in temperature as GPU utilization increases.  
+
+```{r heat_util_gpuMemUtilPerc}
+ggplot(heat_util_gpuUtilPerc, aes(gpuUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+```
+
+## GPU performance
+
+One statistic that can be used to calculated the performance of a GPU is fill rate, the number of pixels that can be rendered by the card per second.
+
