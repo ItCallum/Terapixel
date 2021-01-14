@@ -293,16 +293,80 @@ ggplot(subset(times %>% na.omit(times) %>% filter(jobId == "1024-lvl12-7e026be3-
 
 ```
 
-## So what caused these high upload times.
+## What happened at job 8
 
-So we now know that something caused an increase in upload times between 07:41:00 and 07:44:00. The question is can we work out why this is happening. If we can work why then measures could be put in place to try and reduce these problems in the future.#
+After looking at job 12 and that there seemed to be some issues with tasks that happened at the start of the processes i decided to look at job lvl 8 as all these tasks happened within the same time frame that 
 
-Lets try and find what these GPUs have in common. I'm looking at all GPUS that at some point have a upload time of 50 second. It turns out we have 776 GPUS which where used in these 977 task.
+We see that there is a band similar of task time of around 65 seconds. We also see that there is 2 tasks that have the longest amount of time taken to complete a task.
 
-My first idea is that it might be because of because of these GPUS being used first to upload job lvl 8 tasks. As these are done first there might be a possibility that switching from task 8 to task 12 causes this issue. This isnt the case as only 109 task where tied job 8  
+These are ef15022d-f816-4434-b41e-709cb996bc08 and 83064f91-5a19-4526-8673-38ab28dd3ab7
+
 ```{r could_it_be_run}
 
-all_high_uploads <- times %>% na.omit(times) %>% filter(jobId == "1024-lvl12-7e026be3-5fd0-48ee-b7d1-abd61f747705", eventName == "Uploading", diff > 15)
+ggplot(link_gpu_task_xy %>% filter(level == 8), aes(x, y, fill= total_time)) + 
+  geom_tile() + scale_fill_gradient(low="grey", high="blue")
+
+job_8 <- link_gpu_task_xy %>% filter(level == 8)
+
+job_8 %>% filter(level == 8 & total_time > 75)
+``` 
+
+## The maximum job 8
+
+Looking at the two tasks that gave us the longest times to complete a task (ef15022d-f816-4434-b41e-709cb996bc08 and 83064f91-5a19-4526-8673-38ab28dd3ab7).
+
+Both events occurred at 07:43:44. We see that these tasks took 94 and 88 secounds. 
+
+Breaking down these tasks we see that both have extremely high render times meaning that we are seeing the problem that occured in those lvl 12 jobs happen here.
+
+```{r could_it_be_run}
+job_8 %>% filter(level == 8 & total_time > 75)
+
+times %>% filter(taskId == "ef15022d-f816-4434-b41e-709cb996bc08") 
+
+times %>% filter(taskId == "83064f91-5a19-4526-8673-38ab28dd3ab7") 
+``` 
+
+## The band 
+
+We can see a band of of high completion times in the Y 10 area. I wanted to see if this is because we are seeing the upload problem or something else.
+
+Again we see that its an issue with uploading as the upload times in this band was around 20 secounds.
+
+```{r could_it_be_run}
+
+(job_8 %>% filter(level == 8 & y > 9 & y < 12))$taskId
+
+the_band <- subset(times, taskId %in% (job_8 %>% filter(level == 8 & y > 9 & y < 12))$taskId)
+
+the_band
+
+the_band %>% group_by(taskId) %>% filter(eventName == "Uploading")
+
+the_band %>% group_by(taskId) %>% filter(eventName == "Render")
+
+``` 
+
+
+## So what caused these high upload times.
+
+By getting all the uploads that have a upload time of 15 seconds or higher I was able to started looking at these chases to try and find anything that could help explain these errors.
+
+Through out the processes 1042 tasks had an uplaod time that was greater than 15
+
+784 Gpus had a task that had an upload time of 15 seconds are higher
+
+Looking at jobs we have 977 job 12 and 65 job 65.
+
+Plotting the times at which these uploads occur we see that the overwheliming majority occur between 7:40:00 and 7:45:00.
+
+Plotting the Hostnames and grouping them together we see that all hosts have been effected so it dosnt look like like it has anything to do with hardware.
+
+By the looks of it the issue that caused this might be an outside factor that caused the error in upload time.
+
+```{r could_it_be_run}
+
+all_high_uploads <- times %>% na.omit(times) %>% filter(eventName == "Uploading", diff > 15)
 
 all_high_uploads
 
@@ -312,10 +376,14 @@ Y <- subset(link_gpu_task,gpuSerial %in% X$gpuSerial)
 
 X  %>% count(gpuSerial)
 
-Y %>% count(jobId)
+all_high_uploads %>% count(jobId)
 
-ggplot(subset(times %>% na.omit(times) %>% filter(jobId == "1024-lvl12-7e026be3-5fd0-48ee-b7d1-abd61f747705" , eventName == "Render"), !(taskId %in% Over50)) 
+ggplot(all_high_uploads
 , aes(x=timestamp, y=diff)) +
-  geom_point(size=2, shape=23)
+  geom_point()
+
+all_high_uploads$hostname = substr(all_high_uploads$hostname,1,nchar(all_high_uploads$hostname)-2)
+all_high_uploads %>% count(hostname)
+
 
 ```

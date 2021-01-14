@@ -146,10 +146,6 @@ names(df_heat_map) <- c("x", "y", "level", "V1")
 link_gpu_task <- read.csv("data/link_gpu_task.csv")
 link_gpu_task <- link_gpu_task %>% mutate(timestamp.x = as.POSIXct(timestamp.x,format="%Y-%m-%d %H:%M:%OS"),lagtime= as.POSIXct(lagtime,format="%Y-%m-%d %H:%M:%OS"))
 
-
-
-
-
 ## Just Random test code
 
 ##didItwork <- read.csv("data/checkpoints_df_time.csv")

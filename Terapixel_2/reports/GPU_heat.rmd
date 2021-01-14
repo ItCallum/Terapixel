@@ -33,7 +33,7 @@ We see that there is as Memory utilization increases it changes the temperature 
 At low utilization zero (so not running) temprature as its lowest of 37. we then see as utlisation slightly increases we see a a jump to around 40 degrees. We then notice 3 trends
 - betweeb 5% and 35% the temparture stays at around 40 degrees. 
 - There is then a sudden jump to around 41 degrees up until 60 percent
-- Between memory utlisation 60% to 80% we see that temprature slowly starts to decrease to around 38 degrees. 
+- Between memory utlisation 60% to 80% we see that temperature slowly starts to decrease to around 38 degrees. 
 
 ```{r heat_util_gpuMemUtilPerc}
 ggplot(heat_util_gpuMemUtilPerc, aes(gpuMemUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
@@ -49,7 +49,58 @@ We see that there is a slow increase in temperature as GPU utilization increases
 ggplot(heat_util_gpuUtilPerc, aes(gpuUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
 ```
 
-## GPU performance
+## GPU performance and temprature
 
-One statistic that can be used to calculated the performance of a GPU is fill rate, the number of pixels that can be rendered by the card per second.
+One statistic that can be used to calculated the performance of a GPU is fill rate, the number of pixels that can be rendered by the card per second as we know each task is the filling in of 4096 * 4096 pixels so we can say that tasks with low total rendertimes could be said to have a better performance.
 
+By selecting the rendering events in checkpoints and linking via host name and time to the appropriate GPU in the GPU data frame I was able to create a summary of power usage depending on the length on the rendering processes.
+
+Plotting the graph we see that the longer the rendering time then the longer the higher the median temperature of the GPU. This shows us that as render time increase (so GPU performance decreases as more time is used to render) that the temperature rises also. 
+
+
+```{r heat_util_gpuMemUtilPerc}
+
+Render_time_temp <- gpu_render_highlight %>% mutate(render_time = round(render_time,digits = 0 )) %>% group_by(render_time)  %>% summarize(min = min(gpuTempC.x) , qt1 = quantile(gpuTempC.x, 1/4), mean = mean(gpuTempC.x), median =  median(gpuTempC.x), qt3 = quantile(gpuTempC.x, 3/4), max =max(gpuTempC.x), sums = sum(gpuTempC.x))
+
+Render_time_temp
+
+ggplot(Render_time_temp %>% filter(render_time > 0), aes(render_time,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+```
+
+## How does temparture increase as the render processes completes
+
+Basically how does the temperature change through the rendering processes of the each task.
+
+We see that something weird has happened. The 
+
+```{r heat_util_gpuMemUtilPerc}
+
+#gpu_render_highlight 
+
+#dat <- inner_join(gpu_render_highlight , gpu_render_highlight%>% group_by(taskId_event) %>% count(taskId_event), by = "taskId_event")
+
+options(scipen=999)
+
+#with_percentage <- dat %>% group_by(taskId_event) %>% mutate(rendering_percenatge = (row_number() / n ) * 100)
+
+#with_percentage
+
+#with_percentage  %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
+
+#with_percentage
+
+with_percentage$render_time <- round(with_percentage$render_time, digits = 0)
+
+#with_percentage %>% count(render_time)
+
+Power_used_at_heat <- with_percentage  %>% filter(render == 1) %>% mutate(rendering_percenatge = round(rendering_percenatge,digits = 0)) %>% group_by(render_time, rendering_percenatge) %>% summarize(min = min(gpuTempC.x) , qt1 = quantile(gpuTempC.x, 1/4), mean = mean(gpuTempC.x), median =  median(gpuTempC.x), qt3 = quantile(gpuTempC.x, 3/4), max =max(gpuTempC.x), sd = sd(gpuTempC.x) )
+  
+ggplot(Power_used_at_heat %>% filter(render_time <= 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point()+ geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)+  ggtitle("Heat of GPU as the render tasks goes on")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
+
+
+ggplot(Power_used_at_heat %>% filter(render_time <= 62 & render_time > 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time) + ggtitle("Heat of GPU as the render tasks goes on")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
+
+
+ggplot(Power_used_at_heat %>% filter(render_time <= 82 & render_time > 62), aes(rendering_percenatge,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)+  ggtitle("Heat of GPU as the render tasks goes on")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
+
+```

@@ -1,6 +1,6 @@
 
 time_sumary <- na.omit(times) %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
-time_sumary <- time_sumary %>% mutate(percenatge = sums / sum(sums) * 100)
+time_sumary_omit_totalrender <- time_sumary %>% filter(eventName != "TotalRender") %>% mutate(percenatge = sums / sum(sums) * 100)
 
 time_sumary_12 <- na.omit(times) %>% filter(jobId == "1024-lvl12-7e026be3-5fd0-48ee-b7d1-abd61f747705") %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
 time_sumary_12 <- time_sumary_12 %>% mutate(percenatge = sums / sum(sums) * 100)

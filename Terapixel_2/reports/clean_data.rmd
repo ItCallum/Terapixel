@@ -47,6 +47,11 @@ ggplot(unique_Host, aes(y=n)) +
 
 unique_Host %>% filter(n > 1000)
 
+test <- checkpoints_df
+test$hostname = substr(test$hostname,1,nchar(test$hostname)-2)
+
+test %>% count(hostname)
+
 ```
 ### eventType
 

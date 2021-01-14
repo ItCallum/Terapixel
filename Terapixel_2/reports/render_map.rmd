@@ -1,0 +1,201 @@
+---
+title: "render_map"
+author: "Callum Simpson"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(digits=2)
+```
+
+## What excatly are we rendering in each title.
+
+Whilst it may be complicated to I want to find out if what we are trying to depict in a tile effects the rendering time.
+
+After redoing my dataframe I mapped out the image but filling each tile with the amount of time it took to render.
+
+We see that looking at the image the large square that is used to display the key for the data point meaning has been cut out has required the least amount of time to fully render. This inst spurising as its pretty much a full block of color. 
+
+We can also clearly see that large open spaces like fields and ponds of water seem to to not take long to render either. Again this is probably due to it essentially rendering a flat image.
+
+I would say that for the most part the rendering of the tops of buildings doesn't seem to take that much time either. 
+
+```{r baseline}
+
+rendertasks <- times %>% filter(eventName == "Render")
+rendertasks<- na.omit(rendertasks)
+
+render_with_cords <- inner_join(rendertasks , xy_df , by = "taskId")
+
+
+ggplot(render_with_cords %>% filter(level == 12), aes(x=x, y=y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+```
+Lets says all roofs, fields and ponds (so single flat colour) take less than 40 seconds to render. If we remove them we can look at the other titles abit clear.
+
+With those cords removed we are left with what seems to be roads, some building tops and tree fields.
+
+I want to look at 
+
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 12, diff > 40), aes(x=x, y=y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+ggplot(render_with_cords %>% filter(level == 12, diff > 45), aes(x=x, y=y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+```
+
+https://rpubs.com/issactoast/cutimage
+
+```{r baseline}
+
+map <- system.file('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/map.PNG',package='imager')
+
+im <- load.image('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/Capture3.PNG')
+Square <- load.image('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/Square.PNG')
+
+width <- dim(im)[1]
+height <- dim(im)[2]
+
+rendertasks <- times %>% filter(eventName == "Render")
+rendertasks<- na.omit(rendertasks)
+
+render_with_cords <- inner_join(rendertasks , xy_df , by = "taskId")
+
+render_with_cords <- render_with_cords %>% mutate(cord = paste0(y,x))
+
+make.vr <- function( x, name ){
+  assign( name, x, envir = .GlobalEnv)
+}
+
+cords_to_image <- function(to_Render,n){ 
+
+par(mfrow=c(n,n), mar = c(0,0,0.1,0.1))
+  
+for (j in 1:n){
+  for (i in 1:n){
+    vr.name <- paste0("",  n - (j) , i - 1  )
+    
+    if(vr.name %in% to_Render){
+       imsub(im, (width/n)*(i-1) < x & x <  i * (width/n),
+          (height/n)*(j-1) < y & y <  j * (height/n)) %>%
+        make.vr(name = vr.name) %>%
+      plot(main = "",
+           axes = FALSE,
+           #xaxt="n", yaxt="n", 
+           xlab = "", ylab = "", ann = FALSE )   
+    }
+    else{
+    imsub(Square, (width/n)*(i-1) < x & x <  i * (width/n),
+          (height/n) *(j-1) < y & y <  j * (height/n)) %>%
+      make.vr(name = vr.name) %>%
+      # save.image( file = paste0(vr.name,".jpg")) %>%
+      plot(main ="",
+           axes = FALSE,
+          # xaxt="n", yaxt="n", 
+           xlab = "", ylab = "", ann = FALSE )    
+    }
+  }
+}
+}
+```
+
+## What is in each tile and can you group them on render time.
+
+I was wondering if we could link what is being rendered in each title to the render time.
+
+By combining the xy df and with a dataframe of how much time it took to complete each render I was able to create a system where we can create a heat map of tiles and how long it would take to render each of them.
+
+Also by using an image of the render produced I was able to create a system in which we could split the render into the tiles. This way we can see what each task in our data base was actually rendering and we could use that to visually compare that to see if there was any common ground between what as actually being rendered and how long it
+
+The following will be on the tiles done for the job level 8.
+
+This is because 
+
+- a 16 by 16 grid of tiles is alot easier to do visual comparisons of tiles on than a large 256 by 256. (also visually showing how the image splits into 65536 titles is a nightmare 
+- Also job 8 has a varied number of different render time that might tell us what we are wanting to know.
+
+The following is and example of this.
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 8), aes(x, y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63"))$cord
+
+cords_to_image(base,16)
+
+```
+
+
+## What tiles took the least amount of time to render
+
+First let look at the titles that took less than 30 seconds to render.
+
+Plotting these titles see that they take place in the lower left coordinates (x 0,2 and y 0,3). Plotting this out we see that these relate to the renders key. This is primarily a single flat color which is probably why it didn't take that long to render. 
+
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 8 , diff <= 30), aes(x, y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+base <- (render_with_cords %>% filter(level == 8, diff < 30))$cord
+
+cords_to_image(base,16)
+
+```
+
+## 40 to 50 secounds 
+
+We know that the median time to render a task 8 title was 41 seconds, so my next check was see what titles lay below this line but took more time to render than the key.
+
+Looking at the results we see that the titles that took less than 41 seconds to render where 
+
+- a large space of empty land 
+- a flat section of water 
+- a field next to the key with some trees
+- a compacted section of city with alot of builds that all seem to be of the same size.
+- a small section of houses
+
+All these tiles seem to contain primarily 1 type of object to render 
+
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 40, diff > 30), aes(x, y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+base <- (render_with_cords %>% filter(level == 8, diff <= 40, diff > 30))$cord
+
+cords_to_image(base,16)
+
+```
+
+## 40 to 45 secounds 
+
+Next I wanted to from the median ()
+median to upper quartile. 
+
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 45, diff > 40), aes(x, y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+base <- (render_with_cords %>% filter(level == 8, diff <= 45, diff > 40))$cord
+
+cords_to_image(base,16)
+
+```
+
+```{r baseline}
+
+ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 50, diff > 45), aes(x, y, fill= diff)) + 
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+
+base <- (render_with_cords %>% filter(level == 8, diff <= 50, diff > 45))$cord
+
+cords_to_image(base,16)
+
+```

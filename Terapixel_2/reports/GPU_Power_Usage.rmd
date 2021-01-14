@@ -236,7 +236,7 @@ ggplot(gpu_renders_xy_table %>% filter(level == 12), aes(x, y, fill= median)) +
 
 As we know that that an increase in render time is linked to an increase in power. Because of this we would expect that if we where to do a similar coordinate heat map but using the total amount of time needed to complete each task we should expect to see a similar graph to the one above.
 
-Whilst this somewhat holds true we see that there seems to be "rows" of tasks that contain a high total that was needed to complete the task . 
+Whilst this somewhat holds true we see that there seems to be "rows" of tasks that contain a high total that was needed to complete the task. 
 
 ```{r 4}
 
