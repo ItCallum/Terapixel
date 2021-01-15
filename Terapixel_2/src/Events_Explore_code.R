@@ -14,3 +14,8 @@ time_sumary_4 <- time_sumary_4 %>% mutate(percenatge = sums / sum(sums) * 100)
 How_long_per_task <- last_tasks %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
 
 How_long_per_task_job <- last_tasks %>% group_by(jobId) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
+
+last_task_boxplot <- ggplot(last_tasks , aes(y=total_time)) + geom_boxplot() + facet_wrap(~jobId) + ggtitle("Time taken for completion of a task by job ID")+ ylab("Time in seconds") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())

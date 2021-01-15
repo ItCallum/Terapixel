@@ -123,7 +123,7 @@ We see that total render time takes on median average 44 seconds to complete. Ag
 time_sumary_8
 ```
 
-Overall, Looking at the summary tables we see the median time for each event seems to decreases as we increase in job level, meaning that we should expect a job from job lvl 12 to finish before a job from lvl 8. However it could be said that level 4 consists of one tasks meaning we cant be too sure in this assumption.
+Overall, Looking at the summary tables we see the median time for each event seems to decreases as we increase in job level, meaning that we should expect a job from job lvl 12 to finish before a job from lvl 8 if both started at the same time. However it could be said that level 4 consists of one tasks meaning we cant be too sure in this assumption.
 
 However we see that for level 8 we see that uploading took up a larger percentage of the total time used than the tasks in the other job levels. Indicating that it may take a bit more time to upload the level 8 renders or that there has been something that has effected the upload speeds during lvl8 upload process.
 
@@ -135,7 +135,7 @@ I wanted to find out how long it took on average to complete a task (so when the
 
 I created a new data frame that consists of the last event of each task , with time that task started and how long it took to finish the full task (so all events).
 
-What should be mentioned to why I created a new df and not modify my last time data frame by just selecting the TotalRender for each task. After doing a look through of some of the task i noticed that the last event wouldn't always be TotalRender as sometime it would end on Uploading. This ment that the task may be slightly longer than what is actually being recorded. So to ensure accuracy I made the new DF, however it seems that the results gotten back from this new DF match the TotalRender timings suggesting that these tasks where upload is the very last event may happen a few micro seconds after TotalRender finishes.   
+What should be mentioned is why I created a new df and not modify my last time data frame by just selecting the TotalRender for each task. After doing a look through of some of the task I noticed that the last event wouldn't always be TotalRender as sometime it would end on Uploading. This meant that the task may be slightly longer than what is actually being recorded. So to ensure accuracy I made the new DF, however it seems that the results gotten back from this new DF match the TotalRender timings suggesting that these tasks where upload is the very last event may happen a few micro seconds after TotalRender finishes.   
 
 After doing this we can calculate a median time for how long it takes to complete a task.
 
@@ -147,31 +147,83 @@ How_long_per_task
 
 ```
 
-When looking at the results of the summary of time taken by job we clearly see that job does seem to effect how long each task takes to complete. With most of the time taken needed to render all of the Job lvl 12 jobs.
-
+When looking at the results of the summary of time taken by job we clearly see that job does seem to effect how long each task takes to complete. 
 
 ```{r last_tasks}
 How_long_per_task_job
-
-ggplot(last_tasks , aes(y=total_time)) + geom_boxplot() + facet_wrap(~jobId) + ggtitle("Time taken for completion of a task by job ID")+ ylab("Time in seconds") +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
 ```
 
-## Do jobs happen in parallel 
+## Plotting a box plot of time taken to complete a task
 
-As we have sets of task needed to fully complete each job I wanted to see how each jobs tasks where completed in terms of time scale. Was all the jobs done in parallel to one another? Did we have to wait for one job to complete before we started tasks for another job? Was there any overlap of jobs being processed?
+When we view the time needed to complete each task of a certain job in box plot form we get the following. 
 
-Plotting out the tasks done in each job at the point in time they where completed.  We see that by the looks of it that all Jobs are completed in parrel (so whilist tasks for job lvl 12 is happening tasks for job lvl 8 is happening) 
+We see that for job 12 we see that 50% of the happen a few seconds around 43 seconds. We notice that we have alot of outliers of tasks that take more than 55 seconds.
+
+For job 8 we see the boxplot is more right skewed telling us that we have a spread higher spread of tasks that take longer than the median. We also notice that there inst alot of outliers when compared to level 12.
+
+```{r last_tasks}
+last_task_boxplot
+```
+## Do jobs happen in parallel?
+
+As we each job has a set of tasks I wanted to see how the cloud went about completing all the tasks. Did we have one Job get completed then another? Did jobs get complete in parallel? Did they get complete in chunks?
+
+Plotting out the tasks done in each job at the point in time they where completed.  We see that by the looks of it that all Jobs are completed in parallel (so whilst tasks for job lvl 12 is happening tasks for job lvl 8 is happening).
 ```{r last_tasks}
 
 last_tasks
 
 last_tasks <- last_tasks %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"))
 
-ggplot(last_tasks , aes(x=jobId,y=timestamp)) + geom_point() + facet_wrap(~jobId) + ggtitle("When did task take place")+ ylab("Timestamp") +
+ggplot(last_tasks , aes(x=jobId,y=timestamp)) + geom_point() + facet_wrap(~jobId) + ggtitle("Jobs time scale compared")+ ylab("Timestamp") +
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
 ```
 
+## Task, time and X Y cords
+
+By combining the data frame which has the time taken to complete a task mixed with the x and y cords we could use it to visualize two things. 
+
+- A map of how long it took to complete each tile 
+- A timeline map where each tile is filled by the amount of time between when the task was finished and the start of the whole processes. 
+
+## map of X Y cords filled by how long it took to fully complete that title
+
+If we map the x y cords of each title with the fill being how long it took to complete that tile we could use to see if there where certain sets of titles which share similarities with one another. 
+
+Below is that graph.
+
+```{r last_tasks}
+
+last_tasks_xy <- left_join(last_tasks, xy_df ,by = c("jobId","taskId") )
+
+last_tasks_xy <- last_tasks_xy %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"), time_from_start = as.numeric(timestamp - as.POSIXct("2018-11-08 07:41:55.289",format="%Y-%m-%d %H:%M:%OS")))
+
+ggplot(last_tasks_xy, aes(x, y, fill= total_time)) + 
+  geom_tile()+ 
+  facet_wrap(~ level,scales = "free")+   scale_fill_gradient(low="grey", high="blue") + ggtitle("Total time to complete each task")
+
+```
+Looking at the lvl 8 and 12 graphs we see that there is are distinct areas in which the render time was really low. This suggest that what is actually is in the tile that is being rendered does seem to effect the time taken to complete the task.
+
+We also notice that there seems to be a distictint band in the low Y cords in the lvl 12 graph in which rows of x cords seem to have the same or similar high render times. We also see a similar band appear in the y = 10 ish in lvl 8. This seems really off and suggest that something might of happened during the calculation of these tasks that would need to be looked at.
+
+
+
+## when did each title get rendered.
+
+I wanted to see when about each title get rendered. I wanted to see if titles where done sequentially or in chunks. To do this I used the x y cords and filled by the amount of time between the task ending and the start of the whole processes (so the first task).
+
+By the looks of it tasks for jobs 8 where all done together at the same time.
+
+I knew that tasks in job lvl 12 wouldn't be done at the same time but i expected that the titles would be done sequentially after one another (so when one cylce of task was done the set of tasks in the cords next to this block would of been done) however this doesn't seem to be the case. It seems when tasks for job 12 where done seems to be somewhat random.
+
+```{r last_tasks}
+
+
+ggplot(last_tasks_xy, aes(x, y, fill= time_from_start)) + 
+  geom_tile() +  
+  facet_wrap(~ level,scales = "free")+   scale_fill_gradient(low="grey", high="blue")  + ggtitle("Cord map of Time between the start of the processes and the completion of the task ")
+
+
+```
+In conclusion it seems that something has happened at the start of the processes that caused an increase in some of the tiles in total completion times.
