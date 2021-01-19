@@ -1,5 +1,5 @@
 ---
-title: "GPU_heat"
+title: "Power Usage"
 author: "Callum Simpson"
 date: "30/12/2020"
 output: pdf_document
@@ -7,151 +7,117 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir= normalizePath('..'))
+
 options(digits=2)
+options(scipen=999)
+
 ```
 
 ```{r include=FALSE}
-
-source("src/GPU_heat_code.R")
+source("src/GPU_Power_Usage_code.R")
 ```
 
+In this report I will be investigating various questions realting to power usage. One of the few costs realting to creating a terapixel is the cost of power use. If we can discover how power is effected / changed throughout the creation of terrapixel image then further work could be done useing the discovered information that could  help reduce power used / cost. 
 
-## power Draw
+## How much power was used 
 
-Next I wanted to see if there interplay between increased power draw and render time.
+First I wanted to look at how much power was used in total creating the terapixel image. By summing all of the power recorded used at each tick in the gpu_df we see that the processes to make/render the titles for the image was used `r sum(gpu_df$powerDrawWatt)` watts. We know that the whole process took 49 minuets so we can estimate that 1 minuets of this processes used `r sum(gpu_df$powerDrawWatt) / 50` watts and 1 second used `r sum(gpu_df$powerDrawWatt) / (50 * 60)` watts.
 
-My idea to do this was by creating a new data frame that was the combination. Of how long it took to render each task and how much power it took to do so.
+
+## The interplay between increased power draw and render time.
+
+Next I wanted to see if there interplay between increased power draw and render time. 
+
+Originally I wanted to find the interplay between each event type and power usage however I ran into a problem. The GPU_df data is recorded in ticks of 2 seconds and some of the events took a second or less to complete meaning a full mapping of tasks to GPU wasn't possible. Render events take on average 43 seconds so we should have 20 gpus ticks per task.
+
+Using the application-checkpoints data frame to see what time rendering took place and combined it to the gpu df by host name I was able to work out which ticks in the GPU data frame where happing during a task render event and which where happening when another event was occurring. The following questions will be explored using this new data.
+
+## Typical GPU power usage during Render events and all other events 
 
 First I will look at the typical power usage during rendering vs everything else.
 
-We see typical power usage during rendering far out passes typical power used doing the other tasks. 
-The typical power we expect a rendering task is used is 102 watts per tick. However Im slight unsure of this number so I did an additional check by checking the actual power used by a GPU over a window of time.
-
+The following is a boxplot of typical power usage of render tasks vs all the other tasks combined.
 
 ```{r gpu_render_highlight}
 
-##gpu_render_highlight
-
-
-gpu_render_highlight_sum <- gpu_render_highlight %>% group_by(render)  %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-gpu_render_highlight_sum_jobId <- gpu_render_highlight %>% group_by(render,jobId)  %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-
-gpu_render_highlight$render <- as.factor(gpu_render_highlight$render)
-
-
-gpu_render_highlight_sum
-
-ggplot(gpu_render_highlight, aes(x = render, y = powerDrawWatt.x)) + geom_boxplot() + ggtitle("Typical Power usages rendering vs all other events")+ ylab("Power usage") 
-na.omit(gpu_render_highlight_sum_jobId)
+Typ_power_V_render
 
 ```
+We see typical power usage during rendering far out passes typical power used doing the other tasks. This means that if we want to find ways to reduce the amount of power used we will need to look at powers used.
 
-We have seen that the job has effected thing in the past however looking at the result we see that typical power per tick is not one of them.
+It seems that the power used per "tick" for a render tasks can vary from between 0 to 200 watts with the median being 102 watts per tick. 
+
+## Typical Power usages and Job 
+
+We have seen that the job has effected things like rendering time so I wanted to investigate if Jobs had an effect on the typical amount of energy used per tick
 
 ```{r gpu_render_highlight}
-
-gpu_render_highlight_sum_jobId <- gpu_render_highlight %>% group_by(render,jobId)  %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
 
 na.omit(gpu_render_highlight_sum_jobId)
 
 ```
+We see that all the jobs share a similar amount of watts per tick when it comes to rendering. 
 
 ## 20 mins with 04dc4e9647154250beeee51b866b0715000000
 
-At random I chose hostname 04dc4e9647154250beeee51b866b0715000000 to see its GPU and how it was using power by plotting out power usage at each time stamp coloured by if it was at a time somthing was rendering.
+I wanted to visually see how the power usage of a GPU would look like over a period of time. For example would power usage gradually increase over time, would it fluctuate.
 
-We see that in this small subset we see that the power usage at the start of rendering is low but quickly picks up. It does seem that depending on render time does somewhat indicate the hight of the amount of power used. We see that the render of the rendering task the power does drop low to roughly the amount of power its was drawing before the rendering started.
-
-This shows that we might need to create a typical power usage based on when about in the rendering process we are.
+At random I chose hostname 04dc4e9647154250beeee51b866b0715000000 to see its GPU and how it was using power by plotting out power usage at each time stamp coloured by if it was used to render something or if It was be processing another event.
 
 ```{r gpu_render_highlight}
 
-##gpu_render_highlight
-
-single_host <- gpu_render_highlight %>% filter(hostname == '04dc4e9647154250beeee51b866b0715000000')
-
-ggplot(single_host %>% filter(timestamp < as.POSIXct("2018-11-08 08:00:00")), aes(timestamp, powerDrawWatt.x)) + geom_line() + geom_point(aes(col = render))
+single_host_plot
 
 ```
 
+We see that in this small subset that the power usage at the start of rendering event is low but quickly picks up. From this brief look into CPU usage It does seem that depending on render time does somewhat indicate the max of the amount of power used in that a tick . We see that near the end of the render task the power does drop low to roughly to be using the same amout of power its was drawing at the start (before the rendering started).
 
-
-```{r Power_used_at_all_percentage}
-#gpu_render_highlight%>% group_by(taskId_event) %>% count((taskId_event))
-
-#dat <- inner_join(gpu_render_highlight , gpu_render_highlight%>% group_by(taskId_event) %>% count(taskId_event), by = "taskId_event")
-
-options(scipen=999)
-
-#with_percentage <- dat %>% group_by(taskId_event) %>% mutate(rendering_percenatge = (row_number() / n ) * 100)
-
-#with_percentage
-
-#with_percentage  %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-
-Power_used_at <- with_percentage  %>% filter(render == 1) %>% mutate(rendering_percenatge = round(rendering_percenatge,digits = 0)) %>% group_by(rendering_percenatge) %>% summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-Power_used_at_percent <- with_percentage %>% mutate(render_time = round(render_time,digits = 0)) %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-
-```
-
+This shows that we might need to create a typical power usage based on when about in the rendering process we are.
 
 
 ## power usage at percenatge runtime
 
-As said in '20 mins with 04dc4e9647154250beeee51b866b0715000000' using a typical power usage per tick wouldnt be that useful as we know that depending on how far through we are rendering a processes we are the power usage can vary wilidly.
+As said in '20 mins with 04dc4e9647154250beeee51b866b0715000000' using a typical power usage per tick wouldn't be that useful as we know that depending on how far through a rendering processes we are the power usage can vary wildly.
 
-By working out power usage at each percentage of completion of each task (percentage rounded to nearest percentage for cleanliness we can get the following line graph)
-
-We see that typically the first 20ish percent of the render we have a power usage of around 30 watts per 2 tick. Once we reach 25% percent of the way through the rendering processes power usage jumps to around 110 wats per tick. We continue with power usage around 110 doing this until we reach roughly 95% when we jump back down to roughly 45 watts per tick. 
+By working out power usage at each percentage of completion of each task (percentage rounded to nearest percentage for cleanliness we can get the following line graph) we might get a better idea of how power is being used.
 
 ```{r Power_used_at_all_percentage}
 
 ggplot(Power_used_at, aes(rendering_percenatge,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) +  ggtitle("Power usages based on the render completion percent")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
 
-
 ```
+We see that typically the first 20ish percent of the rendering processes the power usage is around 30 watts per tick. Once we reach 25% percent of the way through the rendering processes power usage dramatically jumps to around 110 watts per tick. We see that power usage continues to stay around 110 watts until we reach roughly 95% when power watts jump back down to roughly 45 watts per tick. 
+
 ## render_time and power usage by percenatge completion.
 
-When we split the render time by percentage completion down into separate graphs we see that two things 
+We noticed that in '20 mins with 04dc4e9647154250beeee51b866b0715000000' that what different lengths in render times reached a higher max power usage.  
 
-- As render time increases its seems the typical power increase per tick increases. We also see that the total percentage of processes being at high power increases as render time increases.
+I decided to look at how power usage increased over each render time.
 
-This information tells us that as render time increases the typical amount of power drawn per tick increases.
+When we split the render time by percentage completion down into separate graphs we get the following (Results split over 3 graphs)
 
 ```{r gpu_render_highlight}
 
-Power_used_at_percent %>% count(render_time)
-
 ggplot(Power_used_at_percent %>% filter(render_time <= 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point()+ geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)
 
-ggplot(Power_used_at_percent %>% filter(render_time <= 62 & render_time > 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point()
-+ geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)
+ggplot(Power_used_at_percent %>% filter(render_time <= 62 & render_time > 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point()  + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)
 
-ggplot(Power_used_at_percent %>% filter(render_time <= 82 & render_time > 62), aes(rendering_percenatge,median)) + geom_line()  + geom_point()
-+ geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)
+ggplot(Power_used_at_percent %>% filter(render_time <= 82 & render_time > 62), aes(rendering_percenatge,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)
 
 
 ```
+As render time increases its seems the typical power increase per tick increases. We also see that the total percentage of processes being at high power increases as render time increases.
+
 ## Typical power per tick based on render.
 
 We know that the render time effects power usage. The following is a line graph with error of what can be called the "typical" power usage of a tick based on render time.
 
 ```{r gpu_render_highlight}
 
-gpu_render_highlight_table <- gpu_render_highlight %>% filter(render == 1)
-
-gpu_render_highlight_table$render_time <- round(gpu_render_highlight_table$render_time, digits = 0 )
-
-gpu_render_highlight_table <- gpu_render_highlight_table  %>% group_by(render_time)  %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x))
-
 #gpu_render_highlight_table
 
-ggplot(gpu_render_highlight_table, aes(render_time, median)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+ggplot(gpu_render_highlight_table, aes(render_time, median)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) +  ggtitle("Typical Power usage per tick by Render time") + ylab("Median Power usage in Watts") +  xlab("Render time")
 
 #ggplot(gpu_render_highlight_table, aes(render_time, mean)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=0.25)
 
@@ -161,49 +127,19 @@ ggplot(gpu_render_highlight_table, aes(render_time, median)) + geom_line() + geo
 
 We have worked out that the longer the time taken to render the task the more power needed per tick. So we should expect that the amount of power used per rendering time to increase.
 
-We see that the increase in render time and the increase in median of total power used in linear.
-
 ```{r gpu_render_highlight_sum}
 
-gpu_render_highlight_sum <- gpu_render_highlight %>% filter(render == 1)
+ggplot(gpu_render_highlight_sum, aes(render_time, median)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) +  ggtitle("Power used by render time") + ylab("Median total power usage in Watts") +  xlab("Render time")
 
-gpu_render_highlight_sum$render_time <- round(gpu_render_highlight_sum$render_time, digits = 0 )
-
-
-gpu_render_highlight_sum <- gpu_render_highlight_sum  %>% group_by(render_time,taskId_event)  %>%  summarize(sum = sum(powerDrawWatt.x))
-
-
-gpu_render_highlight_sum <-  gpu_render_highlight_sum  %>% group_by(render_time)  %>% summarize(min = min(sum) , qt1 = quantile(sum, 1/4), mean = mean(sum), median =  median(sum), qt3 = quantile(sum, 3/4), max =max(sum), sd = sd(sum))
-
-ggplot(gpu_render_highlight_sum, aes(render_time, median)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
 
 #ggplot(gpu_render_highlight_sum, aes(render_time, mean)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=0.25)
 ```
 
-
-```{r gpu_render_highlight_sum}
-
-gpu_render_highlight_sum <- gpu_render_highlight %>% filter(render == 1)
-
-gpu_render_highlight_sum$render_time <- round(gpu_render_highlight_sum$render_time, digits = 0 )
-
-
-gpu_render_highlight_sum <- gpu_render_highlight_sum  %>% group_by(render_time,taskId_event)  %>%  summarize(sum = sum(powerDrawWatt.x))
-
-
-gpu_render_highlight_sum <-  gpu_render_highlight_sum  %>% group_by(render_time)  %>% summarize(min = min(sum) , qt1 = quantile(sum, 1/4), mean = mean(sum), median =  median(sum), qt3 = quantile(sum, 3/4), max =max(sum), sd = sd(sum))
-
-ggplot(gpu_render_highlight_sum, aes(render_time, median)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
-
-ggplot(gpu_render_highlight_sum, aes(render_time, mean)) + geom_line() + geom_point() + geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=0.25)
-
-
-```
-
+We see that the increase in render time and the increase in median of total power used in linear.
 
 ## Heat map,
 
-Finally, using the coordinates tied to each task I was able to create a heat map needed to render each tile. Looking at the heatmap, Areas that seem to have renderd a large area like a grassy patch/pond used the least amount of energy. Roads and roofs use the mid amount of power to render. It seems like the tiles that use the most power to render are titles that contain trees.
+Finally, using the coordinates tied to each task I was able to create a heat map needed to render each tile. Looking at the heatmap, tiles that seem to have rendered a large area like a grassy patch/pond used the least amount of energy. Roads and roofs use the mid amount of power to render. It seems like the tiles that use the most power to render are titles that contain trees.
 
 This tells us that rendering a forest of trees would take alot more energy than rendering a pure urban city scape.
 

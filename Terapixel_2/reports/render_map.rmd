@@ -1,19 +1,28 @@
 ---
 title: "render_map"
 author: "Callum Simpson"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+  df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir= normalizePath('..'))
+
 options(digits=2)
 ```
 
 
-```{r set_up}
+```{r include=FALSE}
 # Load project
 library('ProjectTemplate')
-setwd("D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2")
+load.project()
+
 source('src/Events_Explore_code.R')
+
 ```
 
 In this report I will be investigating if there is any link between the time needed to render a tile and what is actually being rendered. The idea behind this was that if we can find similarities between tiles that have similar render times then it will give us an ideas us how long it render certain terrain. We could use this information to predict how long it would take to render a new image. We could also see what terrain types take the longest to render, with this information the render could be improved to help reduce the amount of time spent rendering these things.
@@ -27,7 +36,7 @@ Using the data frame that i created that consisted of how long it took to comple
 
 The following is the cord map of how long it took to render that tile for the tasks in lvl 12. 
 
-```{r baseline}
+```{r lvl12_render}
 
 rendertasks <- times %>% filter(eventName == "Render")
 rendertasks<- na.omit(rendertasks)
@@ -43,17 +52,19 @@ Looking at the the resulting graph we can clearly see that there is shapes in pa
 
 Whilst I could write about what is in each square by comparing it to a full image of the map created I wanted to do something better.
 
-What I created was a system using cutimage that splits an image of the full render into tiles that allows me to filter out certain sections in a similar way in which I could filter out tiles in the heat map of rendertimes as seen above. This way we can see what each task in our data base was actually rendering and we could use that to visually compare that to see if there was any common ground between what as actually being rendered and how long it took.
+What I created was a system using cutimage that splits an image of the full render into tiles that allows me to filter out certain sections in a similar way in which I could filter out tiles in the heat map of rendertimes as seen above. This way we can see what each task in our data base was actually rendering and we could use that to visually compare tiles to see if there was any common ground between what was actually being rendered and how long it took.
 
 https://rpubs.com/issactoast/cutimage
 
-```{r baseline}
+```{r the_code_needed_to_split_image}
 
 ## An image of the render map
 im <- load.image('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/Capture3.PNG')
 
 ## just a blank square that is the same pixel size of the render map image
 Square <- load.image('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/Square.PNG')
+
+K15_map <- load.image('D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2/graphs/K15_map.PNG')
 
 ## hight and width of the image.
 width <- dim(im)[1]
@@ -95,7 +106,7 @@ for (j in 1:n){
     if(vr.name %in% to_Render){
       
       ## draw the appropriate image onto the canvas (so what was in the tile on the map)
-       imsub(im, (width/n)*(i-1) < x & x <  i * (width/n),
+       imsub(K15_map, (width/n)*(i-1) < x & x <  i * (width/n),
           (height/n)*(j-1) < y & y <  j * (height/n)) %>%
         make.vr(name = vr.name) %>%
       plot(main = "",
@@ -117,26 +128,6 @@ for (j in 1:n){
 }
 }
 
-## https://www.r-bloggers.com/2019/01/extracting-colours-from-your-images-with-image-quantization/
-
-## Function to get n number of colours out of your image. (optionally you can specify different colour space)
-get_colorPal <- function(im, n=1, cs="RGB"){
-  #print(cs) 
-  tmp <-im %>% image_resize("100") %>% 
-    image_quantize(max=n, colorspace=cs) %>%  ## reducing colours! different colorspace gives you different result
-    magick2cimg() %>%  ## I'm converting, becauase I want to use as.data.frame function in imager package.
-    RGBtoHSV() %>% ## i like sorting colour by hue rather than RGB (red green blue)
-    as.data.frame(wide="c") %>%  #3 making it wide makes it easier to output hex colour
-    mutate(hex=hsv(rescale(c.1, from=c(0,360)),c.2,c.3),
-           hue = c.1,
-           sat = c.2,
-           value = c.3) %>%
-    count(hex, hue, sat,value, sort=T) %>% 
-    mutate(colorspace = cs)
-  
-  return(tmp %>% select(colorspace,hex,hue,sat,value,n)) ## I want data frame as a result.
-  
-}
 ```
 
 ## What is in each job lvl 8 tiles and can you group them on render time.
@@ -149,16 +140,16 @@ This is because ...
 
 The following is and example of this. This is a full heat map for level 8
 
-```{r baseline}
+```{r lvl8_render_heat_map}
 
 ggplot(render_with_cords %>% filter(level == 8), aes(x, y, fill= diff)) + 
- geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
+ geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue") + ggtitle("Render time of each tile in Job 8")
 
 ```
 
 And this is the split map. So cord x = 0 and y = 0 in the heat map is 00 in this image.
 
-```{r baseline}
+```{r full_split}
 
 base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63"))$cord
 
@@ -179,7 +170,7 @@ Because of that lets look at tiles that took less than 30 seconds to complete.
 
 Plotting these tiles see that they take place in the lower left coordinates (between x 0:2 and y 0:3). Plotting this out we see that these relate space where the key about sensor information is placed. This is primarily a single flat color which is probably why it didn't take that long to render. 
 
-```{r baseline}
+```{r less_than_30_seconds}
 
 ggplot(render_with_cords %>% filter(level == 8 , diff <= 30), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -190,21 +181,21 @@ cords_to_image(base,16)
 
 ```
 
-## 30 to 40 secounds 
+## 30 secounds to qt1  
 
 We know that the qt1 time to render a task 8 tile was 40 seconds, so my next check was see what tiles had a render time that was less than 40 but greater than 30. 
 
 It seems that the tiles that fell between this range are
 
 - a large space of empty land 
-- a flat section of water 
+- a section of water 
 - a field next to the key with some trees
 - a compacted section of city with alot of builds that all seem to be of the same size.
 - a small section of houses
 
-It seems that all these tiles seem to contain primarily 1 type of object to render (so primalry 1 hex code) and/or comprised of objects that are all the same size.  
+It seems that all these tiles seem to contain primarily 1 type of object to render (1 color) and/or comprised of objects that are all the same size.  
 
-```{r baseline}
+```{r 30_to_40_secounds }
 
 ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 40, diff > 30), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -215,7 +206,7 @@ cords_to_image(base,16)
 
 ```
 
-## 40 to 42 secounds 
+## lower quartile to median 
 
 The next logical step seemed to be from lower quartile to median. This will be 25% of the tiles.
 
@@ -226,7 +217,7 @@ we see that these tiles are
 - shadows being rendered onto flat land.
 - areas which are made up of trees.
 
-```{r baseline}
+```{r lower_quartile_to_median}
 
 ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 42, diff > 40), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -249,7 +240,7 @@ Next is the tiles that had a render time that falls between the median and the u
 
 Comparing these tiles to the previous sets we see that these tiles seem to contain alot more details. This can range from just having alot of trees to having a little bits of extra details on parts of the building. 
 
-```{r baseline}
+```{r median_to_upper_quartile }
 
 ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 45, diff > 42), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -262,7 +253,7 @@ cords_to_image(base,16)
 
 ## upper quartile to maxium
 
-Calucating the the maximum of Q3 + 1.5*IQR which is 52 seconds we will now view the tiles that had a render time between 45 seconds and 52 seconds. 
+Calculating the the maximum of Q3 + 1.5*IQR which is 52 seconds we will now view the tiles that had a render time between 45 seconds and 52 seconds. 
 
 We see that these tiles contain 
 
@@ -270,7 +261,7 @@ We see that these tiles contain
 - areas of high detail (alot of small parts)
 - Tall buildings casting shadows onto areas with alot of detail
 
-```{r baseline}
+```{r upper_quartile_to_maxium}
 
 ggplot(render_with_cords %>% filter(level == 8 ,  diff <= 52, diff > 45), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -287,7 +278,7 @@ Finally we have the outliers. These tiles seem to be around the stadium.
 
 Whilst its difficult to tell we see area where shadows are being cast onto areas that contain a high level of detail.
 
-```{r baseline}
+```{r Outliers}
 
 ggplot(render_with_cords %>% filter(level == 8 ,diff > 52), aes(x, y, fill= diff)) + 
  geom_tile() + facet_wrap(~ level,scales = "free") + scale_fill_gradient(low="grey", high="blue")
@@ -305,21 +296,33 @@ par(mfrow = c(1,1))
 
 We see that the more detailed a title is the longer the render time, we also see that areas that contain shadows/shade seem to increase the render time and that areas with a high density of trees seem to cause an issue.
 
-Being detailed was one of the main purpose of the terapixel image so removing detail to decrease the render time would against the whole point of this project.
+The whole point of the terapixel image is to be detailed so removing detail to decrease the render time would against the whole point of this project.
 
 Instead I believe that work should be done on the shadows / shading processes. It seems that all the tiles that visibly contain something casting a shadow or being in the shade cause the render time to increase. This might be due to the algorithm needed to create the shadows having to spend calculating how the shadow should fall onto the ground and how it should interact with whatever it touched. 
 
-Even if the algothim needed to calculate shadows can be improved by a second or two then in the long run it would help reduce how long it takes to fully render an image. 
+The fact that the shadows are causing an increase in render time tells us if we rendered an image where the sun was at sunset position (so causing longer shadows) then this would cause a increase in render time. On the flip side of this it suggest that the if the "sun" was positioned at mid day (so in the center of the graph) then we should have shorter render time.
+
+Even if the algorithm needs to calculate shadows can be improved by a second or two then in the long run it would shave off a few minuets processing the fully rendered image. 
 
 
 ## colours
 
-```{r baseline}
+an idea that I am working on 
+
+256 by 256 tiles will be difficult to visualize so could we create a way to classify what in each titles.
+
+we see that each object has a distinct colour i.e grass is green, buildings are an off-white, roads are a greyish black.
+
+Could we "read" a title and find the how dominated each colour is as use that to work out what a tile is.
+
+```{r colours}
 
 ## https://www.r-bloggers.com/2019/01/extracting-colours-from-your-images-with-image-quantization/
 
+options(digits=2)
+
 ## Function to get n number of colours out of your image. (optionally you can specify different colour space)
-get_colorPal <- function(im, n=2, cs="RGB"){
+get_colorPal <- function(im, n=5, cs="RGB"){
   #print(cs) 
   tmp <-im %>% image_resize("100") %>% 
     image_quantize(max=n, colorspace=cs) %>%  ## reducing colours! different colorspace gives you different result
@@ -341,19 +344,63 @@ base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8
 
 cords_to_image(base,16)
 
-plot(i00)
+image_read(i31)
 
-get_colorPal(image_read(i00))
+plot(i31)
 
-get_colorPal(image_read(i10))
+test <- get_colorPal(image_read(i31))
 
-get_colorPal(image_read(i01))
+test
 
-get_colorPal(image_read(i11))
+test$hex
 
-get_colorPal(image_read(i30))
-get_colorPal(image_read(i31))
+ggplot(test, aes(x = "", y = n, fill = hex)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0)+
+  scale_fill_manual(values = test$hex) +
+  theme_void()
+
+
+save.image(i31, "i31.png", quality = 1)
+
+#png(filename="i31.png")
+ #plot(i31)
+ #dev.off()
+
+
 ```
+
+http://blenditbayes.blogspot.com/2014/05/towards-yet-another-r-colour-palette.html
+```{r colours}
+
+save_tiles <- function(n){ 
+
+base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63"))$cord
+
+cords_to_image(base,n)
+
+plot(i01)
+
+## j is y cord
+  ## i is x cords
+for (j in 1:n){
+  for (i in 1:n){
+    
+    ## give this image a name
+    vr.name <- paste0("i",  n - (j) , i - 1  )
+    vr.name.png <- paste0("8_tiles/",vr.name,".png")
+    
+    save.image(eval(parse(text = vr.name)), vr.name.png, quality = 1)
+       
+}
+}
+}
+
+save_tiles(16)
+
+```
+
+
 
 
 ## PREVIOUS TEST CODE
