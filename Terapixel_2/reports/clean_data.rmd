@@ -9,16 +9,17 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Clean data
-This is my first look over the data to try and discover any issues that will need to take care of 
+# Clean data
+This is my first look over the data to try and discover any issues that will need to take care of.
 
-### checkpoints_df
+Note - This may not be as clean as my other reports and its not really meant to be a report its meant simply for me to gain a better understanding of the data. So it has been laid out so that its easy for me to gain insight.
+
+
+## checkpoints_df
 A file that contains application checkpoint events throughout the execution of the render job.
 
-We have 660,400 instances with no row missing any values
+We See that we arn't missing data in any of the rows.
 ```{r cars}
-checkpoints_df
-
 checkpoints_df
 
 sum(is.na(checkpoints_df))
@@ -26,14 +27,7 @@ sum(is.na(checkpoints_df))
 
 ### hostname
 
-We have 1024 unique host names with the range of occurrence in the dataset being between 580 to 1240. However looking at the boxplot the majority sits between 600 and 700.
-
-We have 4 hosts that have referenced over 1000 times in this database.
-
-0d56a730076643d585f77e00d2d8521a000000	1240			
-0d56a730076643d585f77e00d2d8521a00000P	1240			
-b9a1fa7ae2f74eb68f25f607980f97d7000009	1240			
-b9a1fa7ae2f74eb68f25f607980f97d700000Y	1220	
+We have 1024 unique host names with the range of occurrence in the dataset being between 580 to 710. However looking at the boxplot the majority of the host names sit between 620 and 670.
 
 ```{r cars}
 unique_Host <- count(checkpoints_df, checkpoints_df$hostname)
@@ -45,17 +39,15 @@ ggplot(unique_Host, aes(y=n)) +
   geom_boxplot() +  
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
 
-unique_Host %>% filter(n > 1000)
+#test <- checkpoints_df
+#test$hostname = substr(test$hostname,1,nchar(test$hostname)-2)
 
-test <- checkpoints_df
-test$hostname = substr(test$hostname,1,nchar(test$hostname)-2)
-
-test %>% count(hostname)
+#test %>% count(hostname)
 
 ```
 ### eventType
 
-Looking at eventType we see that both have the same number of occurrences. This is what we would expect as every job that starts must end.
+Looking at eventType we see that both have the same number of occurrences. This is what we would expect as every event that starts must end.
 
 ```{r gpu_df}
 count(checkpoints_df, checkpoints_df$eventType)
@@ -63,7 +55,7 @@ count(checkpoints_df, checkpoints_df$eventType)
 
 ### eventName
 
-Looking at eventName we see that both have the same number of occurrences. This suggests that every loop will have each event happing once each time.
+Looking at eventName we see that both have the same number of occurrences. This suggests that every loop will have each event happening once (and also back up every event that starts also ends ). 
 
 ```{r gpu_df}
 count(checkpoints_df, checkpoints_df$eventName)
@@ -75,29 +67,41 @@ timestamp is a character so i changed it to a POSIXct time stamp then created tw
 
 Looking at it, it seems all this data occurred over 50ish minuets (07:41:30.957 to 08:30:16.345)
 
+Whilist I probably wont use date in my investegation I did it to make sure that there where no errors in time recording (i.e a time belonding to a diffrent day appered in this test). Doing a count on Dates showed that all timestamp belong to 2018-11-08	
+
 ```{r Date_Time}
 checkpoints_df 
 
 min(checkpoints_df$timestamp) 
 
 max(checkpoints_df$timestamp) 
+
+checkpoints_df %>% group_by(date) %>% summarise(frequency = n())
+
 ```
 ### jobId
 
-Looking at jobId we see that we have 3 job IDs, majority of them (99%) where done at level 12. Only 10 (0.0015%) where done at level 4.
+Looking at jobId we see that we have 3 job IDs. We know that each task had 10 events so by dividing the count of times that the jobId appeared in the data base and divided it by 10 we should set the number of task used to complete that job.
+
+We see a majority of the tasks (99%) where done for level 12. Only 1 task (0.0015%) was needed to complete job level 4.
 
 ```{r jobId}
-count(checkpoints_df, checkpoints_df$jobId) %>% mutate(percent = n / sum(n) * 100)
+count(checkpoints_df, checkpoints_df$jobId) %>% mutate( task = n /10 , percent = n / sum(n) * 100)
 ```
 
 ### taskId
 
 Each task is 4096 * 4096 pixels which are then split and subsampled as required into tiles. 
 
-```{r taskId}
-count(checkpoints_df, checkpoints_df$taskId) %>% mutate(percent = n / sum(n) * 100)
+We see that each task appears 10 time (so the start and stop for each of the 5 events). By filtering the counts we see that there is no task with more or less than 10 records. 
 
-checkpoints_df %>% count( taskId)
+```{r taskId}
+taskId_count <- count(checkpoints_df, checkpoints_df$taskId) %>% mutate(percent = n / sum(n) * 100) 
+
+taskId_count%>% filter(n > 10)
+
+taskId_count%>% filter(n != 10)
+
 ```
 
 ## gpu_df
@@ -117,9 +121,11 @@ The char timestamp was turned into a real timestamp and split into a separate da
 
 These recording are for about 50 minuets (07:41:25.772 to 08:31:53.573)
 
+We see for each host name the time between records is 2 secounds. So 1 tick is 2 secounds 
+
 ```{r Date_Time}
 
-gpu_df
+gpu_df %>% filter(hostname == "8b6a0eebc87b4cb2b0539e81075191b9000009")
 
 min(gpu_df$timestamp) 
 
@@ -128,7 +134,7 @@ max(gpu_df$timestamp)
 
 ### gpuSerial
 
-We have 1024 unique gpuSerial ids, by the looks of it there is no instance where an gpu is shared by by multipale virtual machines 
+We have 1024 unique gpuSerial ids, by the looks of it there is no instance where an gpu is shared by by multiple virtual machines 
 
 This tells us that each Virtual machine is paired to one physical GPU card.
 
@@ -151,6 +157,19 @@ count(unique_serial_id) %>% filter(n > 1)
 
 ### hostname
 
+Hostname is the host which the GPU is attched too.
+
+We see that we have 1024 hosts in this df, We see that each host name occurs roughly 1500 times in this database however we have 5 host names that occur over double that amount of time.
+
+these are hostname
+
+0745914f4de046078517041d70b22fe7000005	3002			
+35bd84d72aca403b8129a7d652cc2750000005	3000			
+4a79b6d2616049edbf06c6aa58ab426a00000Y	2998			
+4ad946d4435c42dabb5073531ea4f315000001	3000			
+95b4ae6d890e4c46986d91d7ac4bf082000010	2991	
+
+This will need to be investigated later, this may indicate the something has gone wrong 
 
 ```{r cars}
 unique_Host <- count(gpu_df, gpu_df$hostname)
@@ -160,14 +179,13 @@ range((unique_Host)$n)
 
 unique_Host %>% filter(n > 2000)
 
-
-
-
 ```
 
 ### powerDrawWatt
 
-The Power draw of the GPU in watts. We see that there is quite the difference in 1st and 3rd quater(80 watts). Looking at the median is 96 
+The Power draw of the GPU in watts. We see that there is quite the difference in 1st and 3rd quater(80 watts). Looking at the median is 96 watts per tick.
+
+We also see that the max is 10 times the min
 
 ```{r powerDrawWatt}
 
@@ -186,7 +204,7 @@ Percent utilization of the GPU Core(s).
 
 We see that 25% of the time no core where used.
 
-However we can see that the median is is 89 telling us that that over 50% of the time the Percent utilization of Cpu is over 89%.
+However we can see that the median is is 89 telling us that that over 50% of the time the Percent utilization of Gpu is over 89% (so very busy)
 
 ```{r gpuUtilPerc}
 
@@ -219,9 +237,9 @@ ggplot(gpu_df, aes(y=gpuTempC)) +
 ```
 ### gpuMemUtilPerc
 
-gpuMemUtilPerc is the Percent utilisation of the GPU memory.
+gpuMemUtilPerc is the Percent utilization of the GPU memory.
 
-We see that the for 25% of the time no cores are being used. With 75% of the utilization of the memory  was at 50% 
+We see that the for 25% of the time no cores are being used. With median being 43% utilization
 
 ```{r gpuMemUtilPerc}
 
@@ -239,13 +257,18 @@ This file contains the x,y co-ordinates of which part the image was being render
 
 we have 65,793 sets of coordinates 
 
+Again we have no rows that contian any missing values
+
 ```{r xy_df}
 xy_df
+
+sum(is.na(xy_df))
+
 ```
 
 ### jobId
 
-Looking at jobId we see that we have 3 job IDs, majority of them (99%) where done at level 12. Only 10 (0.0015%) where done at level 4.
+Looking at jobId we see that we have 3 job IDs. An overwhelming (99%) of the XY cords relate to Job level 12.  Only set of cords where for job lvl 4 (0.0015%).
 
 This and the task id could probably be used to combined this and the application-checkpoints together.
 
@@ -256,11 +279,11 @@ xy_df %>% filter(level == 4)
 xy_df %>% filter(level == 8)
 
 ```
-
-
 ### level
 
-We have 3 different levels 4,8 and 12 (which relate to zoom ability) 
+We have 3 different levels 4,8 and 12 (which relate to zoom ability).
+
+The counts match the counts we got for job ID suggesting no error.
 
 ```{r level}
 count(xy_df, xy_df$level) %>% mutate(percent = n / sum(n) * 100)
@@ -268,7 +291,7 @@ count(xy_df, xy_df$level) %>% mutate(percent = n / sum(n) * 100)
 
 ### X and Y 
 
-All cords seem to be filled in for levels 8 and 12. This also can be used to understand the amount of task that where needed to visualize each level
+All cords seem to be filled in for levels 8 and 12. This also can be used to understand the amount of task that where needed to visualize each level (as each cord set is a task)
 
 ```{r level}
 df_heat_map 

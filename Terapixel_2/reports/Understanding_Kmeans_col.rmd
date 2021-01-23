@@ -1,0 +1,227 @@
+---
+title: "render_map"
+author: "Callum Simpson"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+  df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir= normalizePath('..'))
+
+options(digits=2)
+```
+
+
+```{r include=FALSE}
+# Load project
+library('ProjectTemplate')
+load.project()
+
+source('src/Events_Explore_code.R')
+
+```
+
+As mentioned in a previous report render_map.rmd i had used Color Quantization to work out 15 colors that make up the render map. This was then used to work out the percentage of pixels of a certain color within a given tile. Whilst this worked it got me the RGB values of each color selected. This document will have me going through each RGB colour to assign it to what I think that RGB value is representing. This is more of a misc report for me to get a better understanding of what each colour is ment to repersent
+
+```{r colours}
+
+clean <- job_8_Tiles_Render %>% mutate(y_x = str_sub(tile, 2, -5), cord = str_sub(tile, 1, -5), y = as.integer(sub("_.*", "", y_x)) , x = as.integer(sub(".*_", "", y_x )))  %>% rename(i = X)
+
+most_common <- clean[,3:17] %>% rownames_to_column() %>%gather(column, value, -rowname) %>%group_by(rowname) %>% filter(rank(-value) == 1) %>% mutate(rowname = as.integer(rowname) - 1) %>%    rename(i = rowname , dominate  = column) 
+
+#most_common %>% arrange(i)
+
+#clean
+
+dom<- left_join(clean,most_common,by="i")
+
+ggplot(dom, aes(x, y, fill= dominate)) + 
+ geom_tile() 
+
+base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63"))$cord
+cords_to_image(base,16)
+
+
+```
+
+If we compare the dominate RGB values in each square to the tiles we can determine the following
+
+(128,126,121) is grey and is used in the key. So (128,126,121) is the key 
+
+(96,83,49) appears to be brown and takes up the majority of that blank area in the lower left. I will say that (96,83,49) is blank field (dirt)
+
+(133,167,38) appears to be green and is dominate in areas with alot of grass. So (133,167,38) is grass
+
+(13,0,149) is dominant in the square that are all blue so (13,0,149) is water
+
+(192,183,143) appears to be dominate tiles that contain alot off roof so (192,183,143) is roofs
+
+http://blenditbayes.blogspot.com/2014/05/towards-yet-another-r-colour-palette.html
+
+
+```{r colours}
+
+dom
+
+dom2 <- dom %>% rename(water = X.13..0..149. , Key  = X.128..126..121., Dirt = X.96..83..49. , Grass = X.133..167..38., roof = X.192..183..143. ) 
+
+dom2
+
+
+
+```
+
+We now have to work out the following,
+
+X.237..234..210.
+
+edead2 an off white that seems to be used in text It looks like its needed to render the inside of buildings.
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.237..234..210.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.237..234..210. > 0.005))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.23..26..13
+
+using the hex code gotten from this rgb #171a0d (black) and the heat map we can assume this the the shadows of leaves and also roads.
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.23..26..13.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.23..26..13. > 0.3))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.170..163..128.
+An off white but mainly used for extra details on the roof aaa380 (this was mainly seen on the extra details shown on st james football stadium)
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.170..163..128.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.170..163..128. > 0.1))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.144..137..103.
+
+908967 a dark beige white mainly seen as shadows on a roof. Mainly if a roof is not flat and is slanted, This colour seems to be used to repersent the side of a slanted roof that is not facing the sun. 
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.144..137..103.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.144..137..103. > 0.1))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.220..88..37.
+
+Orange, used to represent the nodes. dc5825
+
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.220..88..37.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.220..88..37. >= 0))$cord
+cords_to_image_15(base,16)
+
+```
+
+
+X.213..200..158.
+
+d5c89e off white. Seems to be used in shadows in roof details. Looks like it is used on roofs that are slanted. This looks like the colour used on the side facing the sun
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.213..200..158.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.213..200..158. >= 0.1))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.156..130..125.
+
+9c827d an salmon color. Another set of flat area. Possibly tied to stone path / other walk ways.
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.156..130..125.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.156..130..125. >= 0.2))$cord
+cords_to_image_15(base,16)
+
+```
+X.61..98..25.
+
+3d6219 is a green, seems to be the front side of trees. 
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.61..98..25.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.61..98..25. >= 0.1))$cord
+cords_to_image_15(base,16)
+
+```
+
+X.54..56..40.
+
+A lightish black/grey. Seems to be used in shadows but a lighter shadow. So used to represent shadows transitioning from deep shadows to fully in light
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.54..56..40.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.54..56..40. >= 0.1))$cord
+cords_to_image_15(base,16)
+
+```
+
+
+X.112..106..83.
+
+Appears a bit in all sections. Seems to be used in shadows but at the very egde between something in shadows and being in the light
+
+```{r colours}
+
+ggplot(dom2, aes(x, y, fill=X.112..106..83.)) + 
+ geom_tile() 
+
+
+base <- (dom2 %>% filter(X.112..106..83. >= 0.1))$cord
+cords_to_image_15(base,16)
+
+```

@@ -1,8 +1,9 @@
 # Example preprocessing script.
 options(digits.secs = 3)
 
+
 ## ---------------------------------------------
-## The Following is the raw code for this project
+## The Following is the raw data for this project
 
 ## Set up the checkpoints_df
 checkpoints_df <- read.csv("data/application-checkpoints.csv") 
@@ -151,3 +152,6 @@ link_gpu_task <- link_gpu_task %>% mutate(timestamp.x = as.POSIXct(timestamp.x,f
 ##didItwork <- read.csv("data/checkpoints_df_time.csv")
 ##write.csv(checkpoints_df_time1, "D:/Masters/Cloud/Terapixel/CSC863_Terapixle_project/Terapixel/data/checkpoints_df_time1.csv", row.names=FALSE)
 
+
+job_8_Tiles_Render <- read.csv("data/8job_tiles_colour.csv") 
+job_12_Tiles_Render <- read.csv("data/tiles_colour_256.csv") 

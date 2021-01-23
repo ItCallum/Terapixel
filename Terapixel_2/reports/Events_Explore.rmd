@@ -17,8 +17,11 @@ setwd("D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2")
 source('src/Events_Explore_code.R')
 ```
 
+
+# Overview 
+
 This report will be covering investigation into 
-- Which event types dominate task run times (And if its effected by the different jobs)
+- Which event types dominate task run times (And if its changes based on the different jobs)
 - How long it takes to complete 1 task 
 - What does the timescale for tasks completion for each job look like
 
@@ -34,9 +37,9 @@ As we know each rendering application is made up of 5 task
  - Tiling is where post processing of the rendered tile is taking place
  - Uploading is where the output from post processing is uploaded to Azure Blob Storage.
 
-We would like to know which event takes up the most run time as if we can figure out what takes the most time effort could be made to work on the most time extensive event to help optimize the system.
+We would like to know which event takes up the most run time as if we can figure out what takes the most time, an additional investigation could be undertaken to look into the "inner workings" of said event to see if it could be optimize in anyway. This would be important as reducing the most time intensive event just by a little bit would greatly improve the over all efficiency (in terms of speed) of the system.
 
-The way I solved this was by working out the time difference between when each task event started and then ended.
+The way I solved this was by working out the time difference between when each event in a task started and when it ended.
 
 Creating a table of summary for each event and how long it took we get the following. 
 
@@ -46,11 +49,11 @@ time_sumary
 
 ```
 
-As TotalRender is essentially how long it took to fully complete a task, how long it took to complete the all of the other events combined.
+As TotalRender is essentially how long it took to fully complete a task, so how long it took to complete the all of the other events combined.
 
-This means that we can use TotalRender as a proxy for how long it took to complete a task. Doing so we see that on average it took 42 secounds to fully complete a task.
+This means that we can use TotalRender as a proxy for how long it took to complete a task. Doing so we see that on average it took 42 seconds to fully complete a task.
 
-Because TotalRender is just the combination of events we should instead look into the other events done in the task to see what took the most time. By doing this we see that Render time is clearly the event that takes up the majority of the time of the time needed to complete a task.
+Because TotalRender is just the combination of events we should instead look into the other events done in the task to see what took the most time. By doing this we see that Render time is clearly the event that takes up the majority of the time needed to complete a task.
 
 ```{r time_sumary}
 
@@ -58,16 +61,17 @@ time_sumary_omit_totalrender
 
 ```
 
-If where to remove the totalrender from the events list and calculate the percentage time spent on each task we see that the majority of time was spent on rendering. 
-The median time spent on rendering was 41 seconds where as the median time spent on the other events are less than a second. This tells us that if we wanted to chose a tasks to try and improve then it should be Rendering as 97% of the the total time spent processing all the tasks was spent on rendering meaning even the slightest tweak to render times would greatly reduce the time needed to fully processes a terapixel image.
+If we where to remove the totalrender from the events list and calculate the percentage time spent on each task we see that the majority of time was spent on rendering. 
 
-We also see that the Render max is double the median and that the median is 22.5 seconds. This suggests that what the is to be rendered in each title effects how long the to rendering processes will take.
+The median time spent on rendering was 41 seconds where as the median time spent on the other events was less than a second. This tells us that if we wanted to chose a tasks to try and improve then it should be Rendering as 97% of the the total time spent processing all the events in a tasks was spent on rendering meaning even the slightest tweak to render times would greatly reduce the time needed to fully processes a terapixel image.
+
+We also see that the Render max is double the median and that the min is 22.5 seconds. This suggests that what the is to be rendered in each title effects how long the to rendering processes will take.
 
 We see uploading has a maximum that is 40* the upper quartile suggesting that at some point something has gone wrong during a one of the tasks.
 
 To make it more visually interesting a box plot graph for each of the events has been made. 
 
-- It shows that we have a few outliers for all events that we will need to look into at some point. If we look at the events that had cause an outliers we might find key factors that are common across them that is causing a greater than normal processing time. Finding out what is causing this is crucial as if we can work out what is happening we might be able to speed up the whole processes, increasing the efficiency.
+- It shows that we have a few outliers for all events that we will need to look into at some point. If we look at the tasks that events caused an outliers we might find key factors that are common across them that is causing a greater than normal processing time. Finding out what is causing this is crucial as if we can work out what is happening we might be able to speed up the whole processes, increasing the efficiency.
 
 ```{r time_sumary}
 
@@ -78,7 +82,7 @@ ggplot(na.omit(times) , aes(y=diff)) + geom_boxplot() + facet_wrap(~eventName, s
 
 Using the previously calculated percentages of how much time was spent doing each event we will plot it as a pie chart 
 
-We knew that pretty much the whole time used to complete the task was spent of Render however visualizing it like this we see that the percentage time spent on Saving Config was so small that its doesn't even appear on the chart. 
+We knew that most of the time was spent on Rendering however visualizing it like this we see that the percentage time spent on Saving Config was so small that its doesn't even appear on the chart. 
 
 ```{r time_percentage}
 ggplot(data=time_sumary_omit_totalrender )+
@@ -89,33 +93,25 @@ ggplot(data=time_sumary_omit_totalrender )+
 ```
 ## Do the diffrent job have a diffrent event times.
 
-So far we have calculated the event times for the whole data but we know that the data is made up of the tasks to complete each job (job lvl 12 , 8 and 4).
+So far we have calculated the event times for the whole data but we know that the data is made up of the tasks to complete 3 jobs (job lvl 12 , 8 and 4).
 
-It would be useful to see if the job lvl had an effect on the time it took complete each event in a task.
+It would be useful to see if the job being worked on had an effect on the time it took complete each event in a task.
 
 ## Level 4
 
 Only one task was needed to complete job 4.
 
-We see that it took 52 seconds to complete, however as we only have 1 record for level 4 we cant say of certain that future tasks will 52 seconds.
+We see that it took 52 seconds to complete, however as we only have 1 record for level 4 we cant say of certain that future runs of this project will take 52 seconds to complete the task needed to develop job 4.
+
 Rendering took up the majority of this task.
 
 ```{r time_sumary_4}
 time_sumary_4
 ```
 
-
-## Level 12
-
-Level 12 has 65536 tasks needed to render each title. We see that on average it takes one of these title 42.8 seconds to fully render.
-
-```{r time_sumary_12}
-time_sumary_12
-```
-
 ## Level 8
 
-This job needed 256 different task to complete. 
+This job needed 256 different task to complete it. 
 
 We see that total render time takes on median average 44 seconds to complete. Again rendering takes up most of the percentage time however we also see that uploading is at 6% which is alot higher than its percentage in other job levels suggesting that in Level 8 the tasks need more to upload the tiles.
 
@@ -123,17 +119,29 @@ We see that total render time takes on median average 44 seconds to complete. Ag
 time_sumary_8
 ```
 
-Overall, Looking at the summary tables we see the median time for each event seems to decreases as we increase in job level, meaning that we should expect a job from job lvl 12 to finish before a job from lvl 8 if both started at the same time. However it could be said that level 4 consists of one tasks meaning we cant be too sure in this assumption.
 
-However we see that for level 8 we see that uploading took up a larger percentage of the total time used than the tasks in the other job levels. Indicating that it may take a bit more time to upload the level 8 renders or that there has been something that has effected the upload speeds during lvl8 upload process.
+## Level 12
 
-However as see that the uploading max of 40 appears in through all jobs its suggests that this is something that effects all jobs and that it has just occurred more frequently in lvl 8. If we can find out if there is something linking all the tasks that have an upload of over 40 then we can possible try a way to stop these outliers as they they are causing the amount of time to render a task to double.
+Level 12 has 65536 tasks needed to render each title. We see that on average it takes one of these tile 42.8 seconds to fully render. 
+
+```{r time_sumary_12}
+time_sumary_12
+```
+
+
+Overall, Looking at the summary tables we see the median time for each event seems to decreases as we increase in job level, meaning that we should expect a task from job lvl 12 to finish before a task from lvl 8 if both started at the same time. However it could be said that level 4 consists of one tasks meaning we cant be too sure in this assumption.
+
+Percentage time usage for all each event appears to be similar through out all jobs, However we see that for level 8 uploading took up a larger percentage of the total time used (6.8% compared to 1.5%). This indicates that it may take a bit more time to upload the level 8 renders or that there has been something that has effected the upload speeds during lvl8 upload process.
+
+Going along the idea that something has went wrong in uploading we see that the max uploading time of 40 seconds appears in both job lvl 8 and 12. This suggests that whatever has happened is something that could of effected all jobs and that it has just occurred more frequently in lvl 8. If we can find out if there is something linking all these increases in time to upload then we can possible try a way to stop these outliers in future runs. 
+
+This is important as this issue would is causing some tasks to take double the expected time to complete (as we see by the max Total Render of 90 secounds in job lvl 12)
 
 ## Time to complete each task
 
 I wanted to find out how long it took on average to complete a task (so when the fist event in the task started to when when the last task finished). This would also help show outliers that we could focus on to see what happened that effected the performance.
 
-I created a new data frame that consists of the last event of each task , with time that task started and how long it took to finish the full task (so all events).
+I created a new data frame that consists of the last event of each task , with time that task started and how long it took to finish the full task (so not the lenght of time needed to complete totalRender).
 
 What should be mentioned is why I created a new df and not modify my last time data frame by just selecting the TotalRender for each task. After doing a look through of some of the task I noticed that the last event wouldn't always be TotalRender as sometime it would end on Uploading. This meant that the task may be slightly longer than what is actually being recorded. So to ensure accuracy I made the new DF, however it seems that the results gotten back from this new DF match the TotalRender timings suggesting that these tasks where upload is the very last event may happen a few micro seconds after TotalRender finishes.   
 
@@ -157,21 +165,24 @@ How_long_per_task_job
 
 When we view the time needed to complete each task of a certain job in box plot form we get the following. 
 
-We see that for job 12 we see that 50% of the happen a few seconds around 43 seconds. We notice that we have alot of outliers of tasks that take more than 55 seconds.
-
-For job 8 we see the boxplot is more right skewed telling us that we have a spread higher spread of tasks that take longer than the median. We also notice that there inst alot of outliers when compared to level 12.
-
 ```{r last_tasks}
 last_task_boxplot
 ```
+We see that for job 12 we see that 50% of the tasks happen a few seconds around 43 seconds. We notice that we have alot of outliers of tasks that take more than 55 seconds.
+
+For job 8 we see the boxplot is more right skewed telling us that we have a spread higher spread of tasks that take longer than the median. We also notice that there isn't alot of outliers when compared to level 12.
+
+We know that both a similar rendering median and iqr range when it comes to rendering times. This suggests that is spread above the median in job 8 is probably due to some tasks having an issue with uploading which we have seen occurs more frequently job lvl 8. 
+
 ## Do jobs happen in parallel?
 
-As we each job has a set of tasks I wanted to see how the cloud went about completing all the tasks. Did we have one Job get completed then another? Did jobs get complete in parallel? Did they get complete in chunks?
+As we each job has a set of tasks I wanted to see how the cloud went about completing all the tasks. Did we have one Job sets of task get completed then another? Did jobs task get completed in parallel? Did they get complete in chunks?
 
-Plotting out the tasks done in each job at the point in time they where completed.  We see that by the looks of it that all Jobs are completed in parallel (so whilst tasks for job lvl 12 is happening tasks for job lvl 8 is happening).
+Plotting out the tasks done in each job at the point in time they where completed. We see that all Jobs are completed in parallel (so whilst tasks for job lvl 12 is happening tasks for job lvl 8 is also happening).
+
 ```{r last_tasks}
 
-last_tasks
+#last_tasks
 
 last_tasks <- last_tasks %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"))
 
@@ -184,11 +195,11 @@ ggplot(last_tasks , aes(x=jobId,y=timestamp)) + geom_point() + facet_wrap(~jobId
 By combining the data frame which has the time taken to complete a task mixed with the x and y cords we could use it to visualize two things. 
 
 - A map of how long it took to complete each tile 
-- A timeline map where each tile is filled by the amount of time between when the task was finished and the start of the whole processes. 
+- A timeline map where each tile is filled by the amount of time between the point in time the tasks fully finished and the start of the whole processes. 
 
 ## map of X Y cords filled by how long it took to fully complete that title
 
-If we map the x y cords of each title with the fill being how long it took to complete that tile we could use to see if there where certain sets of titles which share similarities with one another. 
+If we map the x y cords of each title with the fill being how long it took to complete that tile (remember each tile is tied to a task) we could use it to see if there where certain sets of titles which share similarities with one another. 
 
 Below is that graph.
 
@@ -198,20 +209,19 @@ last_tasks_xy <- left_join(last_tasks, xy_df ,by = c("jobId","taskId") )
 
 last_tasks_xy <- last_tasks_xy %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"), time_from_start = as.numeric(timestamp - as.POSIXct("2018-11-08 07:41:55.289",format="%Y-%m-%d %H:%M:%OS")))
 
-ggplot(last_tasks_xy, aes(x, y, fill= total_time)) + 
-  geom_tile()+ 
+ggplot(last_tasks_xy, aes(x, y, fill = total_time)) + geom_tile()+ 
   facet_wrap(~ level,scales = "free")+   scale_fill_gradient(low="grey", high="blue") + ggtitle("Total time to complete each task")
 
 ```
-Looking at the lvl 8 and 12 graphs we see that there is are distinct areas in which the render time was really low. This suggest that what is actually is in the tile that is being rendered does seem to effect the time taken to complete the task.
+Looking at the lvl 8 and 12 graphs we see that there is are distinct areas in which the render time was really low (bottom left). This suggest that what is actually is in the tile that is being rendered does seem to effect the time taken to complete the task.
 
-We also notice that there seems to be a distictint band in the low Y cords in the lvl 12 graph in which rows of x cords seem to have the same or similar high render times. We also see a similar band appear in the y = 10 ish in lvl 8. This seems really off and suggest that something might of happened during the calculation of these tasks that would need to be looked at.
+We also notice that there seems to be a distinct band in the low Y cords in the lvl 12 graph in which rows of x cords seem to have the same or similar high totalRender times. We also see a similar band appear in the y = 10 ish in lvl 8. This seems really off and suggest that something might of happened during the calculation of these tasks that would need to be looked at.
 
-
+Mabye these are the titles have a high upload time.
 
 ## when did each title get rendered.
 
-I wanted to see when about each title get rendered. I wanted to see if titles where done sequentially or in chunks. To do this I used the x y cords and filled by the amount of time between the task ending and the start of the whole processes (so the first task).
+I wanted to see when about each title get rendered. I wanted to see if tiles where done sequentially or in chunks. To do this I used the x y cords and filled by the amount of time between the task ending and the start of the whole processes (so the first task).
 
 By the looks of it tasks for jobs 8 where all done together at the same time.
 
@@ -226,4 +236,4 @@ ggplot(last_tasks_xy, aes(x, y, fill= time_from_start)) +
 
 
 ```
-In conclusion it seems that something has happened at the start of the processes that caused an increase in some of the tiles in total completion times.
+In conclusion it seems that something has happened at the start of the processes that caused an increase in totalRender times in some tiles tiles

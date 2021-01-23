@@ -12,89 +12,101 @@ options(digits=2)
 
 ```{r include=FALSE}
 # Load project
+library('ProjectTemplate')
+setwd("D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2")
 source("src/GPU_heat_code.R")
 ```
 
-This report will be looking into how certian factors effect the GPU heat.
+This report will be looking into how certain factors effect the GPU heat.
 
 High temperature will have two negative effects on a GPU.
 
-- A high temperatures will shorten the life of hardware. Partically damaged GPU may increase the GPU processing time due , slowing down the processes. Fully damaged GPU would need to be replaced adding in a additional cost to the processes. There is also the potential that too hot of a temperature could cause more damage to the host than just damaging the GPU, taking down the whole machine.
-- GPU typically have a fail safe that will try and combat high temperature by ether slowing down in order to cool down or fully shut down. Both would increase the time needed to run a programme.
+- A high temperatures will shorten the life of hardware. Partially damaged GPU may increase the GPU processing time due to hardware inefficiencies, slowing down the processes. Fully damaged GPU would need to be replaced adding in a additional cost to the processes. There is also the potential that too hot of a temperature could cause more damage to the host than just damaging the GPU, taking down the whole machine.
+- GPU typically have a fail safe that will try and combat high temperature by ether slowing down in order to cool down or fully shut down. Both would increase the time needed to run a program.
 
-So we need to investigate what effect using cloud computers to make Terapixel has an effect on a GPU and if they are being pushed to the point at which they may be damaged.
+So we need to investigate what effect using cloud computers to make Terapixel has an effect on a GPU of the hosts and if they are being pushed to the point at which they may be damaged / cause issues. If we can work out which GPUS are having temperature issues then it may highlight that they would need to be replaced. If we see that all GPUs are having issues (or large groups of them it might suggest that they need a better cooling system)
+
+
+## GPU temprature explored
+
+Before we delve into the report I wanted to go over what I discovered about GPU and temp from the the initial exportation of the data.
+
+The following is a boxplot of the different record temperatures through out the gpu_df. 
+
+gpuTempC is the Temperature of the GPU in Celsius
+
+
+```{r gpuTempC}
+
+ggplot(gpu_df, aes(y=gpuTempC)) + 
+  geom_boxplot() +  
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())+ ggtitle("gpuTempC") 
+
+```
+
+We see that the median is at 40 degrees We also see that there isn't much of a spread of the data and that the data looks normally distributed. the IQR is 4 (so upper qrt is 42 and lower is 38). This means the typically a tick will be around 40 Celsius due the the IQR being so small we can expect that we might see that much change in temperature in the GPUs. We could assume that the outlier below the min where from the very start of the GPU usage (so the very first tick for some of the GPUs). We could also assume that the temperature outliers above the median is due the GPU being used allot (I will look into this later).
 
 ## Memory utlisation and tempreture 
 
 Before I looked into how temperature was effected by performance I went about looking into whether an increase in memory utilization had an effect on GPU temperature.
 
-We see that there is as Memory utilization increases it changes the temperature in some weird ways. 
-
-At low utilization zero (so not running) temprature as its lowest of 37. we then see as utlisation slightly increases we see a a jump to around 40 degrees. We then notice 3 trends
-- betweeb 5% and 35% the temparture stays at around 40 degrees. 
-- There is then a sudden jump to around 41 degrees up until 60 percent
-- Between memory utlisation 60% to 80% we see that temperature slowly starts to decrease to around 38 degrees. 
+The following is a line using error bars to show the median temperature (as wells as the spread) at each gpuMemUtilPerc. 
 
 ```{r heat_util_gpuMemUtilPerc}
-ggplot(heat_util_gpuMemUtilPerc, aes(gpuMemUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+ggplot(heat_util_gpuMemUtilPerc, aes(gpuMemUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How is tempreture effected by Memory utlisation")+ ylab("Tempreture median (Celsius)") 
 ```
+
+We see that there is as Memory utilization increases it changes the temperature in some weird ways. 
+
+At low utilization zero (so not running) temperature as its lowest of 37 Celsius. we then see as utilization slightly increases we see a a jump to around 40 degrees. We then notice 3 trends
+- between 5% and 40% memory utilization the temperature stays at around 40 degrees. 
+- There is then a sudden jump to around 41 degrees up until 60% utilization
+- Between memory utilization 60% to 80% we see that temperature slowly starts to decrease to around 38 degrees. 
+
+We notice that the higher gpu memory utilization the median gets a bit weird, this is due to us having less records of higher GPU memory utilization at high percentages. 
+
 
 ## GPU utlisation and tempreture 
 
 I also wanted to see how GPU utilization effected temperature.
 
-We see that there is a slow increase in temperature as GPU utilization increases.  
+We see that there is a slow increase in temperature as GPU utilization increases. This is what we would expect, the more a device is utilized then the more "pieces" are moving causing an increase in temperature. 
 
 ```{r heat_util_gpuMemUtilPerc}
-ggplot(heat_util_gpuUtilPerc, aes(gpuUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+ggplot(heat_util_gpuUtilPerc, aes(gpuUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How is tempreture effected by GPU utlisation")+ ylab("Tempreture median (Celsius)") 
 ```
 
 ## GPU performance and temprature
 
-One statistic that can be used to calculated the performance of a GPU is fill rate, the number of pixels that can be rendered by the card per second as we know each task is the filling in of 4096 * 4096 pixels so we can say that tasks with low total rendertimes could be said to have a better performance.
+https://xoticpc.com/blogs/news/key-metrics-of-video-cards
+
+One statistic that can be used to calculated the performance of a GPU is fill rate, the number of pixels that can be rasterize by the card and write to memory per second. We know that each task is basically the filling in of 4096 * 4096 pixels so we can say that tasks with low total rendertimes could be said to have a better performance. On the flip side of that we can say that task that took longer to render had a worse performance.
 
 By selecting the rendering events in checkpoints and linking via host name and time to the appropriate GPU in the GPU data frame I was able to create a summary of power usage depending on the length on the rendering processes.
 
 Plotting the graph we see that the longer the rendering time then the longer the higher the median temperature of the GPU. This shows us that as render time increase (so GPU performance decreases as more time is used to render) that the temperature rises also. 
 
 
+
 ```{r heat_util_gpuMemUtilPerc}
 
-Render_time_temp <- gpu_render_highlight %>% mutate(render_time = round(render_time,digits = 0 )) %>% group_by(render_time)  %>% summarize(min = min(gpuTempC.x) , qt1 = quantile(gpuTempC.x, 1/4), mean = mean(gpuTempC.x), median =  median(gpuTempC.x), qt3 = quantile(gpuTempC.x, 3/4), max =max(gpuTempC.x), sums = sum(gpuTempC.x))
+##Render_time_temp
 
-Render_time_temp
-
-ggplot(Render_time_temp %>% filter(render_time > 0), aes(render_time,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25)
+ggplot(Render_time_temp %>% filter(render_time > 0), aes(render_time,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How tempreture is effected by Render time")+ ylab("Tempreture median (Celsius)") + xlab("Render Time (Secounds)") 
 ```
 
 ## How does temparture increase as the render processes completes
 
-Basically how does the temperature change through the rendering processes of the each task.
+We saw that render time does have an effect on median temperature but I wanted to see how temperature changed through out the course of a rendering task.
 
-We see that something weird has happened. The 
+By working out the the number of times a render task appears in the data base we can calculate the percentage completion of a given render task. 
+
+What we notice is that for the first few render times the median power usage doesn't change no matter at what percentage completion we are at. We also see that as render time increases the max temperature gotten at a certain percentage starts to increase.
+
+However a common trend that we notice across all render time is that temperature starts low, then starts to increase until it reaches a point when temparture seems to stablise through. When we reach the end of the rendering task we see that the temperature starts to increase.
 
 ```{r heat_util_gpuMemUtilPerc}
 
-#gpu_render_highlight 
-
-#dat <- inner_join(gpu_render_highlight , gpu_render_highlight%>% group_by(taskId_event) %>% count(taskId_event), by = "taskId_event")
-
-options(scipen=999)
-
-#with_percentage <- dat %>% group_by(taskId_event) %>% mutate(rendering_percenatge = (row_number() / n ) * 100)
-
-#with_percentage
-
-#with_percentage  %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
-
-#with_percentage
-
-with_percentage$render_time <- round(with_percentage$render_time, digits = 0)
-
-#with_percentage %>% count(render_time)
-
-Power_used_at_heat <- with_percentage  %>% filter(render == 1) %>% mutate(rendering_percenatge = round(rendering_percenatge,digits = 0)) %>% group_by(render_time, rendering_percenatge) %>% summarize(min = min(gpuTempC.x) , qt1 = quantile(gpuTempC.x, 1/4), mean = mean(gpuTempC.x), median =  median(gpuTempC.x), qt3 = quantile(gpuTempC.x, 3/4), max =max(gpuTempC.x), sd = sd(gpuTempC.x) )
-  
 ggplot(Power_used_at_heat %>% filter(render_time <= 42), aes(rendering_percenatge,median)) + geom_line()  + geom_point()+ geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)+  ggtitle("Heat of GPU as the render tasks goes on")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
 
 
@@ -104,3 +116,20 @@ ggplot(Power_used_at_heat %>% filter(render_time <= 62 & render_time > 42), aes(
 ggplot(Power_used_at_heat %>% filter(render_time <= 82 & render_time > 62), aes(rendering_percenatge,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + facet_wrap(~render_time)+  ggtitle("Heat of GPU as the render tasks goes on")+ ylab("Power usage in Watts") +  xlab("Precentage completion")
 
 ```
+
+## Correlation between GPU variables 
+
+Finally a better way to see if Render time had an effect on heat would be to do a correlation graph. 
+
+I also wanted to see if render time had any correlation with any of the other variables the where recorded in the gpu df.
+
+```{r Correlation}
+
+ggcorrplot(cor(gpu_render_highlight %>% filter(render == 1) %>% select(powerDrawWatt.x, gpuTempC.x, gpuUtilPerc.x, gpuMemUtilPerc.x,render_time))
+, hc.order = TRUE, type = "lower",
+     outline.col = "white") + ggtitle("Correlation between GPU variables ")
+
+
+```
+
+We see that there is a slight correlation between render time and gpu temptaure meaning that an increase in render time does have an effect (though not major) on GPU heat. We also see that there is also a stronger correlation between gpu temp and gpu utilization. 
