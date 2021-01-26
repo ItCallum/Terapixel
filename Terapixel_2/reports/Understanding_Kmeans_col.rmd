@@ -38,7 +38,7 @@ most_common <- clean[,3:17] %>% rownames_to_column() %>%gather(column, value, -r
 #clean
 
 dom<- left_join(clean,most_common,by="i")
-
+dom
 ggplot(dom, aes(x, y, fill= dominate)) + 
  geom_tile() 
 

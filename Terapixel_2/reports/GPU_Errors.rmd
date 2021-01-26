@@ -1,6 +1,7 @@
 ---
 title: "GPU_Errors"
 author: "Callum Simpson"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -8,190 +9,61 @@ knitr::opts_chunk$set(echo = TRUE)
 options(digits=2)
 ```
 
-We have alot of GPUS which we depend on render the terapixel as the speed at which the image can get made depends on these GPUS.
+```{r include=FALSE}
 
-If we where to have any GPUs that are problematic then they should be replaced in order to maximize efficiency. 
-
-## The baseline
-
-One of the ways that we could work out which GPUS are fault is by looking at GPUS that regularly completed tasks that took longer than the expected time
-
-```{r baseline}
-
-last_tasks %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-
-last_tasks %>% group_by(jobId) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-
+setwd("D:/Masters/Cloud/Terapixel/Terapixel_v2/Terapixel_2")
+source("src/GPU_Error.R")
 ```
 
-## Find which CPUS are causing issues
+We have allot of GPUS which we depend on render the terapixel as the speed at which the image can get made depends on these GPUS.
 
-From previous checks we know that the mean and median times needed to complete a full task was 43 seconds. 
+If we where to have any GPUs that are problematic then they should be replaced or repaired in order for future runs to run more smoothly / without incident. 
 
-By combing each task to a GPU by hostname and then linking the gpus by a time that was between when a task started and ended. (As I only wanted GPU serial and task time I removed the duplicated GPU and task listings so I have one instance of each task / gpu link)
+I will admit that this report is somewhat unclean. It came clear that my idea of trying to find with GPUS stood out based on how long it took to render a job may not be that useful as there is some many additional factors that effect this so I needed to find another angle. 
 
-We have 1024 gpus with each being used to complete 60-70 tasks each (mean is 64).
+I have left this inverstagtion at the end of this report but It really doesn't go anywhere.
 
-I believe that we could use this information to discover to find out which GPU potentially had processing issues by working out the the common amount of time that was needed to complete the task.
+## The wait time
 
-Looking at a count of medians we see that the highest median was 48 (with these GPUs have this median). The next set was 47 with 50 different GPU.
-
-```{r  CPUS_median}
-
-#link_gpu_task$gpuSerial <- as.character(link_gpu_task$gpuSerial)
-
-#link_gpu_task %>% count(gpuSerial)  %>% summarize(min = min(n) , qt1 = quantile(n, 1/4), mean = mean(n), median =  median(n), qt3 = quantile(n, 3/4), max =max(n), sums = sum(n))
-
-#link_gpu_task
-
-link_gpu_task_table <- link_gpu_task %>% group_by(gpuSerial) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-#link_gpu_task_table %>% arrange(-sums)
-
-link_gpu_task_table$median <-round(link_gpu_task_table$median, digits = 0)
-
-link_gpu_task_table %>% count(median)
-
-```
-
-## Looking at the two gpus with 48 medians 
-
-The two 48s where 323617042821 and 325117063019
-
-Both of these only where used on a small number of tasks. This proably is due to the average task taking that long that each CPU may not have been able to do as much as the other gpus.
-
-We see that all the tasks done on these gpu where for done for job 12. The mean time for the completion of tasks for these jobs where 43 secounds. 
-
-As the lower qrt of this GPUS is 43 dose tell us that these GPUS are slower than the other GPUS. So these should be investigated for faults.
-
-```{r median_48}
-
-link_gpu_task$gpuSerial <- as.character(link_gpu_task$gpuSerial)
-
-link_gpu_task_table %>% filter(median == 48)
-
-#link_gpu_task %>% filter(gpuSerial == '323617042821')
-
-#link_gpu_task %>% filter(gpuSerial == '325117063019')
-
-#ggplot(link_gpu_task %>% filter(gpuSerial == '323617042821'), aes(y=total_time)) +  geom_boxplot()
-
-#ggplot(link_gpu_task %>% filter(gpuSerial == '325117063019'), aes(y=total_time)) +  geom_boxplot()
-
-```
-
-## The maximum 
-
-Maybe looking at the maximum time taken to complete each task.
-
-When creating a count of each maximum time on each GPU we see the most common time max was between 60 to 68 seconds. This could be because these GPUs where used to work on tasks for job lvl 8 which we have seen take more time to processes. 
-
-When looking at some of the more extreme max times we have 10 gpus which took more than 75 seconds to complete a task. 
-
-Splitting this into a table we see that these GPUS all have higher means and medians than the baseline. 
-
-```{r The_maximum}
-
-link_gpu_task_table$max <-round(link_gpu_task_table$max, digits = 0)
-
-#link_gpu_task_table %>% count(max)
-
-link_gpu_task_table %>% filter(max >= 75)
-
-```
-
-## Looking at the job 
-
-We saw previously that depending on the job the mean time to complete a task differs.
-
-Its seems we have 257 out of the 1024 GPUs that have rendered tasks relating to 2 different jobs throughout the life time of the rendering the image.
-
-
-```{r gpu}
-link_gpu_task_table_job <- link_gpu_task %>% group_by(gpuSerial,jobId) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-link_gpu_task_table_job %>% count(gpuSerial) %>% filter(n > 1)
-
-```
-
-## Level 4
-
-Job 4 only had one task in order for it to be fully completed. It took 52 seconds to complete. It would be interesting to see if this was due issues with the gpu or the complexity of the task needed to complete a level 4 job. 
-
-We see that this task was done on gpuSerial 323617042759
-
-Looking at gpuSerial 323617042759 we see that after the lvl 4 job its is used for tasks to finish lvl 12 jobs. When looking at the median times to complete its lvl 12 taks we see that the mean being 44 and the median is 46 seconds. While this is a bit on the slower side based on the the base line this arnt too far off suggesting that this gpu may not be that faulty, and that in fact lvl 4 task just took a bit longer.
-
-
-```{r gpu}
-## level 4
-link_gpu_task_table_job %>% filter(jobId == '1024-lvl4-90b0c947-dcfc-4eea-a1ee-efe843b698df')
-
-link_gpu_task %>% filter(gpuSerial == '323617042759')
-
-link_gpu_task %>% filter(gpuSerial == '323617042759') %>% group_by(gpuSerial,jobId) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-```
-
-## Level 8
-
-We have 256 tasks used to render level 8 image.
-
-We also seem to have 256 different GPUS that each ran a single Lvl 8 task.
-
-We see that we have a few outliers for this job. There are 15 tasks that have been classed as outliers that go over the 65 seconds. The largest wait time is 94 seconds.
-
-Looking at these
-
-```{r gpu}
-## level 4
-link_gpu_task  %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63') %>% count(gpuSerial)
-
-level_8_link_gpu <- link_gpu_task %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63') %>% group_by(gpuSerial) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-
-level_8_link_gpu$median <-round(level_8_link_gpu$median, digits = 0)
-
-level_8_link_gpu %>% count(median) 
-
-ggplot(link_gpu_task %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63'), aes(y=total_time)) + 
-  geom_boxplot()
-
-level_8_link_gpu %>% filter(median > 65) 
-
-link_gpu_task %>%  filter(gpuSerial == c('320118119482','323217056308','323217056545','323217056565','323617020175','323617020440','323617020967','324917052177','325017018696','325017020399','325117063092','325117172502','325117172559','325217086244')) 
-#%>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
-```
-
-## the wait time
-
-What might be interesting is to see how long it takes on average for each GPU to start a new task after the last one finished. If we could find GPUS that have a particularly long average time between completing each task then it might suggest something may be wrong with the GPU / Host.
-
-By looking at all GPUS we see that the average time between tasks is 2.4 seconds. The could be used as a baseline that we could use to work out which GPUS may be a bit slow to start new task.
-
-Looking at each individual gpuSerial medians We have 300 occurrences of those higher than 2.4 seconds, with 20 records having a median over 2.8 seconds. These may be worth looking at as if we find a reason that caused this longer delay we might be able to find a way to reduce wait time for all gpus.
+What might be interesting  to see is how long it takes on average for each GPU to start a new task after the last one finished. If we could find GPUS that have a particularly long wait time between task then it might suggest something may be wrong with the GPU / Host. I feel like this would actually be a really good way of finding flaws in the GPUs. There is too many things that could effect how long it takes to render a processes
 
 ```{r wait}
 
 #link_gpu_task
+idle_time %>% summarize(min = min(idletime) , qt1 = quantile(idletime, 1/4),  median =  median(idletime), qt3 = quantile(idletime, 3/4), max =max(idletime), sums = sum(idletime)) 
 
-link_gpu_task %>% group_by(gpuSerial) %>% mutate(idletime = lagtime - lag(timestamp.x)) %>%  na.omit(idletime) %>% ungroup() %>% summarize(min = min(idletime) , qt1 = quantile(idletime, 1/4), mean = mean(idletime), median =  median(idletime), qt3 = quantile(idletime, 3/4), max =max(idletime), sums = sum(idletime)) 
+```
+
+By looking at all GPUS we see that the average time between tasks is 2.4 seconds. This could be used as a baseline that we could use to work out which GPUS typically had a long wait period between completing a tasks and starting a new one.
 
 
-wait_table <- link_gpu_task %>% group_by(gpuSerial) %>% mutate(idletime = lagtime - lag(timestamp.x)) %>% arrange(gpuSerial) %>%  na.omit(idletime) %>% summarize(min = min(idletime) , qt1 = quantile(idletime, 1/4), mean = mean(idletime), median =  median(idletime), qt3 = quantile(idletime, 3/4), max =max(idletime), sums = sum(idletime)) %>%arrange(-median)
+```{r wait}
+ggplot(data=idle_time %>% group_by(gpuSerial) %>% summarize(median =  round(median(idletime), 1)) %>% count(median) , aes(x=median, y=n)) +
+  geom_bar(stat="identity") + ggtitle("Count of median time between GPU tasks") + ylab("Count of GPU") + xlab("Time (secounds)")
+```
 
-wait_table 
 
+```{r wait}
+
+## Work how much of a wait there was between each job
+idle_time <- link_gpu_task %>% group_by(gpuSerial) %>% mutate(idletime = lagtime - lag(timestamp.x)) %>%  na.omit(idletime) %>% ungroup()
+
+idle_time %>% group_by(gpuSerial) %>% summarize(median =  round(median(idletime), 1)) %>% filter(median > 2.4) %>% count(median)
+```
+
+Looking at the results we 300 occurrences of GPUS whos wait period took 2.4 seconds, with 20 records having a typically idle period of 2.8 seconds. These may be worth looking at as if we find a reason that caused this longer delay we might be able to find a way to reduce wait time for all gpus.
+
+Here is a list of the 20 GPUS that should have additional investigation done on them.
+
+```{r wait}
+idle_time %>% group_by(gpuSerial) %>% summarize(median =  round(median(idletime), 1)) %>% filter(median > 2.7)
 ```
 
 ## The Heat map of time used to fully render each tile of the map may show us if there is any GPU issues.
 
-When we plotted out the x y coordinates and the time taken to fully complete each task.
+When we plotted out the x y coordinates and the time taken to fully complete each task We notice that there is a few tasks that took a while to complete. Whats the most interesting is that there seems to be a a few rows in the low Y cords in the level 12 graph that all seem to have a unexpectedly high total times In the 12 level diagram we see a large square that all have relatively low rendertime but some of these cords form part of these odd rows of rendertime. We can see this more clearly if we reduce the y cords to 20.
 
-We notice that there is a few tasks that took a while to complete. Whats the most interesting is that there seems to be a a few rows in the low Y cords in the level 12 graph that all seem to have a unexpectedly high rendertimes. In the 12 level diagram we see a large square that all have relatively low rendertime but some of these cords form part of these odd rows of rendertime. We can see this more clearly if we reduce the y cords to 20.
-
-I wanted to see what caused this as this dosn't seem that its has happened by chance. It does appear that something has gone wrong. 
+I wanted to see what caused this as this don't seem that its has happened by chance. It does appear that something has gone wrong. 
 
 With the median of the time to complete a job lvl 12 task being 43 median we see that the task in these rows take around 50+ seconds to complete.
 
@@ -387,3 +259,144 @@ all_high_uploads %>% count(hostname)
 
 
 ```
+
+
+
+## Old investgations into if we could used typical time needed to complete a task as a way to see if there where
+
+
+## Time base line.
+
+One way of investigating to see if there where any errors would be to see if we had any GPUS that had a median time that to complete tasks higher than others. 
+
+To do this I first will create a base line. We know that each job has a different typical run time so We will need to keep this in mind.
+
+```{r baseline}
+
+Last_task_job
+
+```
+We see that there is quite a spread in median completion times. This suggest that If we where to group everything together and look for GPUS that stood out it wouldn't work. Previously we saw that The tasks in band 8 typically had a higher upload time. This again may make it difficult to find GPU that where defective due to typically taking to long to run. 
+
+## Find which CPUS are causing issues
+
+Task 8 only contained 256 tiles meaning not all GPU would of worked on this image. We also know Task 8 had some uploading issues. So I believe if we examined how a GPU performed in job 12 it would give use a better indication of if there where any issues with the GPU.
+
+From previous checks we know that the median times needed to complete a full task in Job 12 was 43 seconds. 
+
+By combing each task to a GPU by hostname and then linking the gpus by a time that was between when a task started and ended. (As I only wanted GPU serial and task time I removed the duplicated GPU and task listings so I have one instance of each task / gpu link)
+
+We have 1024 gpus with each being used to complete 60-70 tasks each (mean is 64).
+
+I believe that we could use this information to discover to find out which GPU potentially had processing issues by working out the the common amount of time that was needed to complete the task.
+
+Looking at a count of medians we see that the highest median was 48 (with these GPUs have this median). The next set was 47 with 49 different GPU.
+
+We originally though that the median was 43 seconds but on closer inspection it seems that the time taken to complete a task can be split into two groups.
+40 to 42 seconds per tasks and 44 to 47 seconds per task.
+
+```{r  CPUS_median}
+
+link_gpu_task_12
+
+ggplot(data=link_gpu_task_12 %>% count(median), aes(x=median, y=n)) +
+  geom_bar(stat="identity")
+
+```
+
+I'll look into the 44 to 47 split later however I will first investigate the two GPUS that had a median of 48 seconds per task.
+
+
+## Looking at the two gpus with 48 medians 
+
+The two 48s where 323617042821 and 325117063019
+
+Both of these only where used on a small number of tasks. This probably is due to the average task taking that long that each CPU may not have been able to do as much as the other gpus.
+
+We see that all the tasks done on these gpu where for done for job 12. The mean time for the completion of tasks for these jobs was 43 seconds. 
+
+As the lower qrt of this GPUS is 43 dose tell us that these GPUS are slower than the other GPUS. So these should be investigated for faults.
+
+```{r median_48}
+
+link_gpu_task_table %>% filter(median == 48)
+
+```
+
+Further investigation into these GPU was somewhat fruitless as I couldnt find anything note worthy to what could be causing this increase in time. 
+
+## The maximum 
+
+Maybe looking at the maximum time taken to complete each task.
+
+When creating a count of each maximum time on each GPU we see the most common time max was between 60 to 68 seconds. This could be because these GPUs where used to work on tasks for job lvl 8 which we have seen take more time to processes. 
+
+When looking at some of the more extreme max times we have 10 gpus which took more than 75 seconds to complete a task. 
+
+Splitting this into a table we see that these GPUS all have higher means and medians than the baseline. 
+
+```{r The_maximum}
+
+link_gpu_task_table$max <-round(link_gpu_task_table$max, digits = 0)
+
+link_gpu_task_table %>% count(max)
+
+link_gpu_task_table %>% filter(max >= 75)
+
+```
+
+## Looking at the job 
+
+We saw previously that depending on the job the mean time to complete a task differs.
+
+Its seems we have 257 out of the 1024 GPUs that have rendered tasks relating to 2 different jobs throughout the life time of the rendering the image.
+
+
+```{r gpu}
+
+link_gpu_task_table_job %>% count(gpuSerial) %>% filter(n > 1)
+
+```
+
+## Level 4
+
+Job 4 only had one task in order for it to be fully completed. It took 52 seconds to complete. It would be interesting to see if this was due issues with the gpu or the complexity of the task needed to complete a level 4 job. 
+
+We see that this task was done on gpuSerial 323617042759
+
+Looking at gpuSerial 323617042759 we see that after the lvl 4 job its is used for tasks to finish lvl 12 jobs. When looking at the median times to complete its lvl 12 tasks we see that the mean being 44 and the median is 46 seconds. While this is a bit on the slower side based on the the base line this arnt too far off suggesting that this gpu may not be that faulty, and that in fact lvl 4 task just took a bit longer.
+
+
+```{r gpu}
+
+lvl4_jobs
+
+```
+
+## Level 8
+
+We have 256 tasks used to render level 8 image.
+
+We also seem to have 256 different GPUS that each ran a single Lvl 8 task.
+
+We see that we have a few outliers for this job. There are 15 tasks that have been classed as outliers that go over the 65 seconds. The largest wait time is 94 seconds.
+
+```{r gpu}
+## level 4
+link_gpu_task  %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63') %>% count(gpuSerial)
+
+level_8_link_gpu <- link_gpu_task %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63') %>% group_by(gpuSerial) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
+
+level_8_link_gpu$median <-round(level_8_link_gpu$median, digits = 0)
+
+level_8_link_gpu %>% count(median) 
+
+ggplot(link_gpu_task %>% filter(jobId == '1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63'), aes(y=total_time)) + 
+  geom_boxplot()
+
+level_8_link_gpu %>% filter(median > 65) 
+
+link_gpu_task %>%  filter(gpuSerial == c('320118119482','323217056308','323217056545','323217056565','323617020175','323617020440','323617020967','324917052177','325017018696','325017020399','325117063092','325117172502','325117172559','325217086244')) 
+#%>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
+```
+

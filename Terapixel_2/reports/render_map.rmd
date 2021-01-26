@@ -227,7 +227,7 @@ par(mfrow = c(1,1))
 
 I wanted to see if we could work out a better way for working out what was being rendered that wasn't just looking at the tile and making a guess. We see that each object has a distinct color i.e grass is green, buildings are an off-white, roads are a greyish black so if we could "read" a tile and find the how dominant each color is we could use that to work out what that tile is.
 
-To di this i created a bit of python code that would allow me to apply a K-means clustering algorithm to an image so that I could perform Color Quantization. Color Quantization is the process of reducing number of colors in an image, I wanted to do this to make classifying what is in a tile easier. 
+To do this i created a bit of python code that would allow me to apply a K-means clustering algorithm to an image so that I could perform Color Quantization. Color Quantization is the process of reducing number of colors in an image, I wanted to do this to make classifying what is in a tile easier. 
 
 Originally I was performing k means on each title to try and get the 3 dominate colours in each tile. I was going to use it to determine what was the majority color in each tile. This worked but due to things like shading in the original image and how each tile would be doing its own Color Quantization it would lead to each title identifying the same object but give it a slightly different RGB value making it difficult to classify pieces when all the tiles where put back together.
 
@@ -239,7 +239,7 @@ The following is the render map Color Quantization into 15 colors. This gave me 
 
 https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_ml/py_kmeans/py_kmeans_opencv/py_kmeans_opencv.html
 
-```{r colours}
+```{r K15_map}
 
 plot(K15_map)
 
@@ -295,13 +295,12 @@ After that A bit of investigation had to be done to discover what the other colo
 
 Doing a count by adding all the percentages for each group together we see that DeepShadow_Roads make up most of the image where as Inside_of_buildings makes up the least. 
 
-```{r colours}
-colSums(final_dom[,3:17])
+```{r make_up}
+colSums(job_8_Tiles_dom[,3:17])
 ```
 
 We now know what each colors mean so we can work out the the dominate colour in each square. Plotting the cords of each image and filling with the dominate object we get the following.
-```{r colours}
-
+```{r dominate}
 
 ggplot(job_8_Tiles_dom, aes(x, y, fill= dominate)) + 
  geom_tile() + ggtitle("What is the dominate object in an tile")
@@ -315,7 +314,7 @@ Looking at the majority color in a tile we see that we have clumps of grass, dir
 
 Next I will look at the summarize of the render times for each of the dominate tiles to see if there was any dominate feature that consistently caused a spike in render time.
 
-```{r colours}
+```{r median_ob}
 
 task_join_col %>%  group_by(dominate)  %>%  summarize(min = min(diff) , qt1 = quantile(diff, 1/4), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff))
 
@@ -331,21 +330,14 @@ I will admit that Having roads and shadows being the same colour in the K 15 gra
 
 My next idea was to work out the correlation between each of the different objects and the render time. By doing this It would distinctly show if and how each of the different objects effected the amount of time needed to render each tile. The following is that correlation plot.
 
-```{r colours}
-task_join_col <- inner_join(render_with_cords %>% filter(level == 8) , final_dom , by = c("x","y"))
+```{r corr}
+task_join_col <- inner_join(render_with_cords %>% filter(level == 8) , job_8_Tiles_dom , by = c("x","y"))
 
 task_join_col <- task_join_col %>% rename( RENDER_TIME = diff)
 
 ggcorrplot(cor(task_join_col %>% select(RENDER_TIME, roof,roof_details,Roof_Slant_Away_Sun,Grass,Dirt,Inside_of_buildings,Orange,Roof_Slant_Face_Sun,Stone_ground,Key,extra_shadows,tree,light_shadow,DeepShadow_Roads,water))
 , hc.order = TRUE, type = "lower",  insig = "blank",
      outline.col = "white") + ggtitle("Correrlation between object types and render time")
-
-
-#plots(
-#  ggplot(task_join_col, aes(x, y, fill= extra_shadows)) +  geom_tile() + scale_fill_gradient(low="grey", high="blue") + ggtitle("Roof_Shadows percenatge each tile"),
- # ggplot(task_join_col, aes(x, y, fill= diff)) +  geom_tile()  + scale_fill_gradient(low="grey", high="blue") + ggtitle("Render time of each tile in Job 8"),
- # n_columns = 2
-#)
 
 ```
 We can get a lot from this graph but lets focus on the correlation between whats is being rendered and the time needed to render. 

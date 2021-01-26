@@ -78,6 +78,7 @@ To make it more visually interesting a box plot graph for each of the events has
 ggplot(na.omit(times) , aes(y=diff)) + geom_boxplot() + facet_wrap(~eventName, scales = "free_y") + ggtitle("Time it takes to complete each event (free_Y scale)")
 
 ```
+
 ## A pie chart of event percentage
 
 Using the previously calculated percentages of how much time was spent doing each event we will plot it as a pie chart 
@@ -217,7 +218,7 @@ Looking at the lvl 8 and 12 graphs we see that there is are distinct areas in wh
 
 We also notice that there seems to be a distinct band in the low Y cords in the lvl 12 graph in which rows of x cords seem to have the same or similar high totalRender times. We also see a similar band appear in the y = 10 ish in lvl 8. This seems really off and suggest that something might of happened during the calculation of these tasks that would need to be looked at.
 
-Mabye these are the titles have a high upload time.
+Maybe these are the titles have a high upload time.
 
 ## when did each title get rendered.
 

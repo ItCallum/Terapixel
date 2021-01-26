@@ -1,7 +1,6 @@
 # Example preprocessing script.
 options(digits.secs = 3)
 
-
 ## ---------------------------------------------
 ## The Following is the raw data for this project
 
@@ -154,4 +153,3 @@ link_gpu_task <- link_gpu_task %>% mutate(timestamp.x = as.POSIXct(timestamp.x,f
 
 
 job_8_Tiles_Render <- read.csv("data/8job_tiles_colour.csv") 
-job_12_Tiles_Render <- read.csv("data/tiles_colour_256.csv") 

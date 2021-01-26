@@ -10,7 +10,6 @@ gpu_render_highlight$render <- as.factor(gpu_render_highlight$render)
 
 ## A box plot of power usage in rendering and non rendering events
 Typ_power_V_render <- ggplot(gpu_render_highlight, aes(x = render, y = powerDrawWatt.x)) + geom_boxplot() + ggtitle("Power used per tick whilist GPU is rendering vs all other events")+ ylab("Power usage in watts") 
-na.omit(gpu_render_highlight_sum_jobId)
 
 ## Code used to investergate a single host power useage over 20 minuets
 single_host <- gpu_render_highlight %>% filter(hostname == '04dc4e9647154250beeee51b866b0715000000')
@@ -20,8 +19,7 @@ single_host_plot <- ggplot(single_host %>% filter(timestamp < as.POSIXct("2018-1
 ## Code used to calucate how far through a rendering task each row was and give it a percentage value of completion
 dat <- inner_join(gpu_render_highlight , gpu_render_highlight%>% group_by(taskId_event) %>% count(taskId_event), by = "taskId_event")
 with_percentage <- dat %>% group_by(taskId_event) %>% mutate(rendering_percenatge = (row_number() / n ) * 100)
-with_percentage
-with_percentage  %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
+#with_percentage  %>% filter(render == 1) %>% group_by(render_time, rendering_percenatge) %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x) )
 
 
 ## Work out power used at each percentage - All render times

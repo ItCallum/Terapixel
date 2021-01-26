@@ -67,7 +67,7 @@ timestamp is a character so i changed it to a POSIXct time stamp then created tw
 
 Looking at it, it seems all this data occurred over 50ish minuets (07:41:30.957 to 08:30:16.345)
 
-Whilist I probably wont use date in my investegation I did it to make sure that there where no errors in time recording (i.e a time belonding to a diffrent day appered in this test). Doing a count on Dates showed that all timestamp belong to 2018-11-08	
+Whilist I probably wont use date in my investigation I did it to make sure that there where no errors in time recording (i.e a time belonding to a diffrent day appered in this test). Doing a count on Dates showed that all timestamp belong to 2018-11-08	
 
 ```{r Date_Time}
 checkpoints_df 
