@@ -19,9 +19,10 @@ options(digits=2)
 ```{r include=FALSE}
 # Load project
 library('ProjectTemplate')
-load.project()
+#load.project()
 
 source('src/Events_Explore_code.R')
+source('src/render_map.R')
 
 ```
 
@@ -43,7 +44,7 @@ ggplot(dom, aes(x, y, fill= dominate)) +
  geom_tile() 
 
 base <- (render_with_cords %>% filter(jobId.x == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63"))$cord
-cords_to_image(base,16)
+cords_to_image(base,16,im)
 
 
 ```
@@ -88,7 +89,7 @@ ggplot(dom2, aes(x, y, fill=X.237..234..210.)) +
 
 
 base <- (dom2 %>% filter(X.237..234..210. > 0.005))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -103,7 +104,7 @@ ggplot(dom2, aes(x, y, fill=X.23..26..13.)) +
 
 
 base <- (dom2 %>% filter(X.23..26..13. > 0.3))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -117,7 +118,7 @@ ggplot(dom2, aes(x, y, fill=X.170..163..128.)) +
 
 
 base <- (dom2 %>% filter(X.170..163..128. > 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -131,7 +132,7 @@ ggplot(dom2, aes(x, y, fill=X.144..137..103.)) +
 
 
 base <- (dom2 %>% filter(X.144..137..103. > 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -147,7 +148,7 @@ ggplot(dom2, aes(x, y, fill=X.220..88..37.)) +
 
 
 base <- (dom2 %>% filter(X.220..88..37. >= 0))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -163,7 +164,7 @@ ggplot(dom2, aes(x, y, fill=X.213..200..158.)) +
 
 
 base <- (dom2 %>% filter(X.213..200..158. >= 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -177,7 +178,7 @@ ggplot(dom2, aes(x, y, fill=X.156..130..125.)) +
 
 
 base <- (dom2 %>% filter(X.156..130..125. >= 0.2))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 X.61..98..25.
@@ -191,7 +192,7 @@ ggplot(dom2, aes(x, y, fill=X.61..98..25.)) +
 
 
 base <- (dom2 %>% filter(X.61..98..25. >= 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -206,7 +207,7 @@ ggplot(dom2, aes(x, y, fill=X.54..56..40.)) +
 
 
 base <- (dom2 %>% filter(X.54..56..40. >= 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```
 
@@ -222,6 +223,6 @@ ggplot(dom2, aes(x, y, fill=X.112..106..83.)) +
 
 
 base <- (dom2 %>% filter(X.112..106..83. >= 0.1))$cord
-cords_to_image_15(base,16)
+cords_to_image_15(base,16,im)
 
 ```

@@ -1,21 +1,30 @@
 
+## Work out a summary of how it took to complete each event
 time_sumary <- na.omit(times) %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
+## Work out a summary of how it took to complete each event but remove TotalRender (done like this to calculate percenatge better)
 time_sumary_omit_totalrender <- time_sumary %>% filter(eventName != "TotalRender") %>% mutate(percenatge = sums / sum(sums) * 100)
 
+## Work out a summary of how it took to complete each event in job 12
 time_sumary_12 <- na.omit(times) %>% filter(jobId == "1024-lvl12-7e026be3-5fd0-48ee-b7d1-abd61f747705") %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
 time_sumary_12 <- time_sumary_12 %>% mutate(percenatge = sums / sum(sums) * 100)
 
+## Work out a summary of how it took to complete each event in job 8
 time_sumary_8 <- na.omit(times) %>% filter(jobId == "1024-lvl8-5ad819e1-fbf2-42e0-8f16-a3baca825a63") %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
 time_sumary_8 <- time_sumary_8 %>% mutate(percenatge = sums / sum(sums) * 100)
 
+## Work out a summary of how it took to complete each event in job 4
 time_sumary_4 <- na.omit(times) %>% filter(jobId == "1024-lvl4-90b0c947-dcfc-4eea-a1ee-efe843b698df") %>% group_by(eventName) %>% summarize(min = min(diff) , qt1 = quantile(diff, 1/4), mean = mean(diff), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff), sums = sum(diff))
 time_sumary_4 <- time_sumary_4 %>% mutate(percenatge = sums / sum(sums) * 100)
 
+## Calculate how long it took to complete each task.
 How_long_per_task <- last_tasks %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
 
+## Calculate how long it took to complete each task, Depending on Job
 How_long_per_task_job <- last_tasks %>% group_by(jobId) %>% summarize(min = min(total_time) , qt1 = quantile(total_time, 1/4), mean = mean(total_time), median =  median(total_time), qt3 = quantile(total_time, 3/4), max =max(total_time), sums = sum(total_time))
 
+## Create a box plot based on how long it took to complete each job
 last_task_boxplot <- ggplot(last_tasks , aes(y=total_time)) + geom_boxplot() + facet_wrap(~jobId) + ggtitle("Time taken for completion of a task by job ID")+ ylab("Time in seconds") +
   theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
+

@@ -13,8 +13,9 @@ Typ_power_V_render <- ggplot(gpu_render_highlight, aes(x = render, y = powerDraw
 
 ## Code used to investergate a single host power useage over 20 minuets
 single_host <- gpu_render_highlight %>% filter(hostname == '04dc4e9647154250beeee51b866b0715000000')
-single_host_plot <- ggplot(single_host %>% filter(timestamp < as.POSIXct("2018-11-08 08:00:00")), aes(timestamp, powerDrawWatt.x)) + geom_line() + geom_point(aes(col = render)) + ggtitle("Power usage time line for hostname 04dc4e9647154250beeee51b866b0715000000") +ylab("Power usage in watts") 
-
+single_host_plot <- ggplot(single_host %>% filter(timestamp < as.POSIXct("2018-11-08 08:00:00")), aes(timestamp, powerDrawWatt.x)) + geom_line() + geom_point(aes(col = render)) + ggtitle("Power usage time line for hostname 04dc4e9647154250beeee51b866b0715000000") +ylab("Power usage in watts") +theme(title=element_text(size=10)) + scale_colour_discrete(name="Rendering?",
+                                                                                                                                                                                                                                                                                                                                                                  breaks=c("0", "1"),
+                                                                                                                                                                                                                                                                                                                                                                  labels=c("No", "Yes"))
 
 ## Code used to calucate how far through a rendering task each row was and give it a percentage value of completion
 dat <- inner_join(gpu_render_highlight , gpu_render_highlight%>% group_by(taskId_event) %>% count(taskId_event), by = "taskId_event")
@@ -64,3 +65,7 @@ gpu_renders_xy <- left_join(gpu_renders_table, xy_df ,by = c("jobId","taskId") )
 ## Create a df of all of the power usages per title so we can use the median to fill in the heatmap
 gpu_renders_xy_table <- gpu_renders_xy %>% mutate(render_time = round(render_time,digits = 0))  %>% group_by(render_time)  %>%  summarize(min = min(powerDrawWatt.x) , qt1 = quantile(powerDrawWatt.x, 1/4), mean = mean(powerDrawWatt.x), median =  median(powerDrawWatt.x), qt3 = quantile(powerDrawWatt.x, 3/4), max =max(powerDrawWatt.x), sd = sd(powerDrawWatt.x),x = x,y=y, level =level)
 
+## combind render tasks with xy cords
+rendertasks <- times %>% filter(eventName == "Render")
+rendertasks<- na.omit(rendertasks)
+render_with_cords <- inner_join(rendertasks , xy_df , by = "taskId")

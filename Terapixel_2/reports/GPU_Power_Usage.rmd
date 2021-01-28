@@ -68,7 +68,7 @@ At random I chose hostname 04dc4e9647154250beeee51b866b0715000000 to see its GPU
 
 ```{r gpu_render_highlight}
 
-single_host_plot
+single_host_plot 
 
 ```
 

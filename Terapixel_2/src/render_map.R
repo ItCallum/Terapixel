@@ -32,6 +32,7 @@ make.vr <- function( x, name ){
   assign( name, x, envir = .GlobalEnv)
 }
 
+
 ## Creates an image base off a set of given cords
 
 ## Code based off - https://rpubs.com/issactoast/cutimage
@@ -88,15 +89,6 @@ cords_to_image <- function(to_Render,n, image){
 }
 
 
-
-## Work out the dominate colour in each tile
-job_8_Tiles_clean <- job_8_Tiles_Render %>% mutate(y_x = str_sub(tile, 2, -5), cord = str_sub(tile, 1, -5), y = as.integer(sub("_.*", "", y_x)) , x = as.integer(sub(".*_", "", y_x )))  %>% rename(i = X , DeepShadow_Roads = X.23..26..13., light_shadow = X.54..56..40., Orange = X.220..88..37. , Inside_of_buildings = X.237..234..210., tree = X.61..98..25., roof_details = X.170..163..128., Stone_ground = X.156..130..125., Roof_Slant_Away_Sun = X.144..137..103., Roof_Slant_Face_Sun = X.213..200..158., extra_shadows = X.112..106..83. , water = X.13..0..149. , Key  = X.128..126..121., Dirt = X.96..83..49. , Grass = X.133..167..38., roof = X.192..183..143. )
-
-job_8_most_common <- job_8_Tiles_clean[,3:17] %>% rownames_to_column() %>%gather(column, value, -rowname) %>%group_by(rowname) %>% filter(rank(-value) == 1) %>% mutate(rowname = as.integer(rowname) - 1) %>%    rename(i = rowname , dominate  = column) 
-
-job_8_Tiles_dom <- left_join(job_8_Tiles_clean,job_8_most_common,by="i")
-
-
 ## A function that would split the image into a grid of N * N tiles and save each each of the tiles into a file. Used to get the files needed to pass into my python algothim to work out the percentage of each object in a file. 
 save_tiles <- function(n){ 
   
@@ -123,6 +115,10 @@ save_tiles <- function(n){
     }
   }
 }
+
+## Join the work we had done on finding out the colours in a tile and join it with the time needed to render that tile
+task_join_col <- inner_join(render_with_cords %>% filter(level == 8) , job_8_Tiles_dom , by = c("x","y"))
+task_join_col <- task_join_col %>% rename( RENDER_TIME = diff)
 
 
 

@@ -49,6 +49,14 @@ times <- times %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%
 
 last_tasks <- read.csv("data/last_tasks.csv")
 
+## Clean up last tasks timestamp
+last_tasks <- last_tasks %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"))
+
+## Combined the last task to the xy cords.
+last_tasks_xy <- left_join(last_tasks, xy_df ,by = c("jobId","taskId") )
+last_tasks_xy <- last_tasks_xy %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"), time_from_start = as.numeric(timestamp - as.POSIXct("2018-11-08 07:41:55.289",format="%Y-%m-%d %H:%M:%OS")))
+
+
 ## -------------------------------------------
 
 ## -------------------------------------------
@@ -142,9 +150,11 @@ names(df_heat_map) <- c("x", "y", "level", "V1")
 #    df}
 # 
 #  write.csv(df, "D:/Masters/Cloud/Terapixel/CSC863_Terapixle_project/Terapixel/data/link_gpu_task.csv", row.names=FALSE)
-
 link_gpu_task <- read.csv("data/link_gpu_task.csv")
 link_gpu_task <- link_gpu_task %>% mutate(timestamp.x = as.POSIXct(timestamp.x,format="%Y-%m-%d %H:%M:%OS"),lagtime= as.POSIXct(lagtime,format="%Y-%m-%d %H:%M:%OS"))
+
+## -------------------------------------------
+
 
 ## Just Random test code
 
@@ -153,3 +163,14 @@ link_gpu_task <- link_gpu_task %>% mutate(timestamp.x = as.POSIXct(timestamp.x,f
 
 
 job_8_Tiles_Render <- read.csv("data/8job_tiles_colour.csv") 
+
+## clean the data to make it more readable (change RGB values to what I believe it is)
+job_8_Tiles_clean <- job_8_Tiles_Render %>% mutate(y_x = str_sub(tile, 2, -5), cord = str_sub(tile, 1, -5), y = as.integer(sub("_.*", "", y_x)) , x = as.integer(sub(".*_", "", y_x )))  %>% rename(i = X , DeepShadow_Roads = X.23..26..13., light_shadow = X.54..56..40., Orange = X.220..88..37. , Inside_of_buildings = X.237..234..210., tree = X.61..98..25., roof_details = X.170..163..128., Stone_ground = X.156..130..125., Roof_Slant_Away_Sun = X.144..137..103., Roof_Slant_Face_Sun = X.213..200..158., extra_shadows = X.112..106..83. , water = X.13..0..149. , Key  = X.128..126..121., Dirt = X.96..83..49. , Grass = X.133..167..38., roof = X.192..183..143. )
+
+## work out what the dominate colour in each tile
+job_8_most_common <- job_8_Tiles_clean[,3:17] %>% rownames_to_column() %>%gather(column, value, -rowname) %>%group_by(rowname) %>% filter(rank(-value) == 1) %>% mutate(rowname = as.integer(rowname) - 1) %>%    rename(i = rowname , dominate  = column) 
+
+##join the clean data with the infomation of what the dominate colour in a tile
+job_8_Tiles_dom <- left_join(job_8_Tiles_clean,job_8_most_common,by="i")
+
+

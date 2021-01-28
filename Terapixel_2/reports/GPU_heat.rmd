@@ -53,7 +53,7 @@ Before I looked into how temperature was effected by performance I went about lo
 The following is a line using error bars to show the median temperature (as wells as the spread) at each gpuMemUtilPerc. 
 
 ```{r heat_util_gpuMemUtilPerc}
-ggplot(heat_util_gpuMemUtilPerc, aes(gpuMemUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How is tempreture effected by Memory utlisation")+ ylab("Tempreture median (Celsius)") 
+Temp_memory
 ```
 
 We see that there is as Memory utilization increases it changes the temperature in some weird ways. 
@@ -73,7 +73,7 @@ I also wanted to see how GPU utilization effected temperature.
 We see that there is a slow increase in temperature as GPU utilization increases. This is what we would expect, the more a device is utilized then the more "pieces" are moving causing an increase in temperature. 
 
 ```{r heat_util_gpuMemUtilPerc}
-ggplot(heat_util_gpuUtilPerc, aes(gpuUtilPerc,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How is tempreture effected by GPU utlisation")+ ylab("Tempreture median (Celsius)") 
+Temp_gpu
 ```
 
 ## GPU performance and temprature
@@ -86,13 +86,8 @@ By selecting the rendering events in checkpoints and linking via host name and t
 
 Plotting the graph we see that the longer the rendering time then the longer the higher the median temperature of the GPU. This shows us that as render time increase (so GPU performance decreases as more time is used to render) that the temperature rises also. 
 
-
-
 ```{r heat_util_gpuMemUtilPerc}
-
-##Render_time_temp
-
-ggplot(Render_time_temp %>% filter(render_time > 0), aes(render_time,median)) + geom_line()  + geom_point() + geom_errorbar(aes(ymin=qt1, ymax=qt3), width=0.25) + ggtitle("How tempreture is effected by Render time")+ ylab("Tempreture median (Celsius)") + xlab("Render Time (Secounds)") 
+Temp_rend
 ```
 
 ## How does temparture increase as the render processes completes
@@ -124,12 +119,7 @@ Finally a better way to see if Render time had an effect on heat would be to do 
 I also wanted to see if render time had any correlation with any of the other variables the where recorded in the gpu df.
 
 ```{r Correlation}
-
-ggcorrplot(cor(gpu_render_highlight %>% filter(render == 1) %>% select(powerDrawWatt.x, gpuTempC.x, gpuUtilPerc.x, gpuMemUtilPerc.x,render_time))
-, hc.order = TRUE, type = "lower",
-     outline.col = "white") + ggtitle("Correlation between GPU variables ")
-
-
+gpu_corr 
 ```
 
 We see that there is a slight correlation between render time and gpu temptaure meaning that an increase in render time does have an effect (though not major) on GPU heat. We also see that there is also a stronger correlation between gpu temp and gpu utilization. 

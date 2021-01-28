@@ -59,8 +59,6 @@ Whilst I could write about what is in each tile by comparing it to a full image 
 
 What I created was a system using cutimage that splits an image of the full render into tiles that allows me to filter out certain sections in a similar way in which I could filter out tiles in the heat map of rendertimes as seen above. This way we can see what each task in our data base was actually rendering and we could use that to visually compare tiles to see if there was any common ground between what was actually being rendered and how long it took.
 
-https://rpubs.com/issactoast/cutimage
-
 ## What is in each job lvl 8 tiles and can you group them on render time.
 
 The following will be an investigation of the tiles done for the job level 8.
@@ -316,7 +314,7 @@ Next I will look at the summarize of the render times for each of the dominate t
 
 ```{r median_ob}
 
-task_join_col %>%  group_by(dominate)  %>%  summarize(min = min(diff) , qt1 = quantile(diff, 1/4), median =  median(diff), qt3 = quantile(diff, 3/4), max =max(diff))
+task_join_col %>%  group_by(dominate)  %>%  summarize(min = min(RENDER_TIME) , qt1 = quantile(RENDER_TIME, 1/4), median =  median(RENDER_TIME), qt3 = quantile(RENDER_TIME, 3/4), max =max(RENDER_TIME))
 
 ```
 
@@ -331,9 +329,6 @@ I will admit that Having roads and shadows being the same colour in the K 15 gra
 My next idea was to work out the correlation between each of the different objects and the render time. By doing this It would distinctly show if and how each of the different objects effected the amount of time needed to render each tile. The following is that correlation plot.
 
 ```{r corr}
-task_join_col <- inner_join(render_with_cords %>% filter(level == 8) , job_8_Tiles_dom , by = c("x","y"))
-
-task_join_col <- task_join_col %>% rename( RENDER_TIME = diff)
 
 ggcorrplot(cor(task_join_col %>% select(RENDER_TIME, roof,roof_details,Roof_Slant_Away_Sun,Grass,Dirt,Inside_of_buildings,Orange,Roof_Slant_Face_Sun,Stone_ground,Key,extra_shadows,tree,light_shadow,DeepShadow_Roads,water))
 , hc.order = TRUE, type = "lower",  insig = "blank",

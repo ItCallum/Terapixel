@@ -55,7 +55,7 @@ This means that we can use TotalRender as a proxy for how long it took to comple
 
 Because TotalRender is just the combination of events we should instead look into the other events done in the task to see what took the most time. By doing this we see that Render time is clearly the event that takes up the majority of the time needed to complete a task.
 
-```{r time_sumary}
+```{r time_sumary_omit_totalrender}
 
 time_sumary_omit_totalrender
 
@@ -73,7 +73,7 @@ To make it more visually interesting a box plot graph for each of the events has
 
 - It shows that we have a few outliers for all events that we will need to look into at some point. If we look at the tasks that events caused an outliers we might find key factors that are common across them that is causing a greater than normal processing time. Finding out what is causing this is crucial as if we can work out what is happening we might be able to speed up the whole processes, increasing the efficiency.
 
-```{r time_sumary}
+```{r graph_time_taken_event}
 
 ggplot(na.omit(times) , aes(y=diff)) + geom_boxplot() + facet_wrap(~eventName, scales = "free_y") + ggtitle("Time it takes to complete each event (free_Y scale)")
 
@@ -158,7 +158,7 @@ How_long_per_task
 
 When looking at the results of the summary of time taken by job we clearly see that job does seem to effect how long each task takes to complete. 
 
-```{r last_tasks}
+```{r last_tasks_j0b}
 How_long_per_task_job
 ```
 
@@ -166,7 +166,7 @@ How_long_per_task_job
 
 When we view the time needed to complete each task of a certain job in box plot form we get the following. 
 
-```{r last_tasks}
+```{r last_task_boxplot}
 last_task_boxplot
 ```
 We see that for job 12 we see that 50% of the tasks happen a few seconds around 43 seconds. We notice that we have alot of outliers of tasks that take more than 55 seconds.
@@ -185,8 +185,6 @@ Plotting out the tasks done in each job at the point in time they where complete
 
 #last_tasks
 
-last_tasks <- last_tasks %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"))
-
 ggplot(last_tasks , aes(x=jobId,y=timestamp)) + geom_point() + facet_wrap(~jobId) + ggtitle("Jobs time scale compared")+ ylab("Timestamp") +
   theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank())
 ```
@@ -204,11 +202,7 @@ If we map the x y cords of each title with the fill being how long it took to co
 
 Below is that graph.
 
-```{r last_tasks}
-
-last_tasks_xy <- left_join(last_tasks, xy_df ,by = c("jobId","taskId") )
-
-last_tasks_xy <- last_tasks_xy %>% mutate(timestamp = as.POSIXct(timestamp,format="%Y-%m-%d %H:%M:%OS"), time_from_start = as.numeric(timestamp - as.POSIXct("2018-11-08 07:41:55.289",format="%Y-%m-%d %H:%M:%OS")))
+```{r heat_map_Total_time}
 
 ggplot(last_tasks_xy, aes(x, y, fill = total_time)) + geom_tile()+ 
   facet_wrap(~ level,scales = "free")+   scale_fill_gradient(low="grey", high="blue") + ggtitle("Total time to complete each task")
@@ -228,7 +222,7 @@ By the looks of it tasks for jobs 8 where all done together at the same time.
 
 I knew that tasks in job lvl 12 wouldn't be done at the same time but i expected that the titles would be done sequentially after one another (so when one cylce of task was done the set of tasks in the cords next to this block would of been done) however this doesn't seem to be the case. It seems when tasks for job 12 where done seems to be somewhat random.
 
-```{r last_tasks}
+```{r When_did_job_place}
 
 
 ggplot(last_tasks_xy, aes(x, y, fill= time_from_start)) + 
