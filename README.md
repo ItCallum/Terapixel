@@ -1,6 +1,6 @@
 # Terapixel 
 
-This is my source code needed for the completion of my project - The Performance evaluation of Terapixel rendering in Cloud (Super)computing.
+This is my source code needed for the completion of my project - The Performance evaluation of Terapixel rendering on Cloud (Super)computing.
 
 A Terapixel image offers a new and intuitive way to present information sets to stakeholders that is also extremely accessible to all, allowing viewers to interactively browse big data across multiple scales. Typically made up of over one trillion pixels and provide a fluid experience where the viewer can see an overview of the whole image or zoom into incredible detail. 
 
